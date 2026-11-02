@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>UC Savdo</title>
+<meta name="theme-color" content="#ffffff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="UC Savdo">
+<link rel="manifest" href="manifest.webmanifest">
+<script>if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));</script>
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Unbounded:wght@600;700&display=swap">
+<style>
+/* Layout: phone POS app — sticky title bar, one scrolling screen, fixed bottom tab bar, bottom sheets for actions. */
+:root{
+  --bg:#f4f5f7; --card:#ffffff; --line:#eceef2; --line2:#e2e5ea; --fg:#14171f; --muted:#8e95a3; --soft:#f1f3f6;
+  --blue:#1f6bff; --blue-soft:#e9f0ff; --orange:#f07a1a; --green:#17a34a; --green-soft:#e6f6ec; --red:#e5484d; --red-soft:#fdecec; --amber:#d48806; --amber-soft:#fff5e0;
+  --f:"Manrope",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --navh:64px;
+  color-scheme:light;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+html,body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--f);font-size:15px;line-height:1.4}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+
+/* shell */
+.app{max-width:560px;margin:0 auto;min-height:100vh;background:var(--bg);padding-bottom:calc(var(--navh) + 24px + env(safe-area-inset-bottom,0px))}
+.top{position:sticky;top:0;z-index:5;background:var(--card);border-bottom:1px solid var(--line);
+  padding:12px max(16px,env(safe-area-inset-right,0px)) 12px max(16px,env(safe-area-inset-left,0px));display:flex;align-items:center;gap:10px}
+.top h1{margin:0;font-size:20px;font-weight:800;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.iconbtn{width:40px;height:40px;border-radius:12px;border:0;background:var(--soft);display:inline-flex;align-items:center;justify-content:center;flex:none}
+.iconbtn svg{width:20px;height:20px}
+.role.pick{cursor:pointer;border:0;font-family:inherit}
+.shopbar{display:flex;align-items:center;gap:10px;width:100%;padding:12px 16px;border:1px solid var(--line);border-radius:16px;background:var(--card);font:inherit;font-size:15px;color:var(--fg);cursor:pointer;text-align:left}
+.shopbar .ic{display:flex;width:22px;color:var(--blue)}.shopbar .go{margin-left:auto;color:var(--blue);font-weight:700;font-size:13px}
+.cardhead{display:flex;align-items:center;justify-content:space-between;gap:10px}.cardhead h2{margin:0}
+.linkbtn{border:0;background:none;color:var(--blue);font:inherit;font-weight:700;font-size:13px;cursor:pointer;padding:4px 0}
+.role{font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;background:var(--blue-soft);color:var(--blue);white-space:nowrap;max-width:40%;overflow:hidden;text-overflow:ellipsis}
+.screen{padding:12px max(16px,env(safe-area-inset-right,0px)) 0 max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:12px}
+
+/* bottom nav */
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+.nav-in{max-width:560px;margin:0 auto;display:flex;height:var(--navh)}
+.nav button{flex:1;border:0;background:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:#9ba3b1;font-size:11.5px;font-weight:600;min-width:0}
+.nav button span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nav button svg{width:24px;height:24px}
+.nav button[aria-current="page"]{color:var(--blue)}
+
+/* chips & search */
+.chips{display:flex;gap:8px;overflow-x:auto;padding:2px 0 4px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{border:1.5px solid var(--line2);background:var(--card);border-radius:999px;padding:8px 14px;font-size:14px;font-weight:700;white-space:nowrap;flex:none}
+.chip[aria-pressed="true"]{border-color:var(--blue);color:var(--blue);background:var(--blue-soft)}
+.searchrow{display:flex;gap:10px;align-items:center}
+.search{flex:1;display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:0 14px;height:50px;min-width:0}
+.search svg{width:20px;height:20px;color:var(--muted);flex:none}
+.search input{border:0;outline:0;background:transparent;flex:1;min-width:0;font-size:16px;font-weight:600}
+.search input::placeholder{color:#a6adba;font-weight:600}
+.addbtn{width:50px;height:50px;border-radius:16px;border:0;background:var(--blue);color:#fff;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.addbtn svg{width:24px;height:24px}
+
+/* lists */
+.list{background:var(--card);border-radius:18px;overflow:hidden;border:1px solid var(--line)}
+.item{display:flex;align-items:center;gap:14px;padding:14px 12px 14px 14px;border-bottom:1px solid var(--line);width:100%;background:none;border-left:0;border-right:0;border-top:0;text-align:left}
+.item:last-child{border-bottom:0}
+.item[disabled]{opacity:.5}
+.thumb{width:56px;height:56px;border-radius:16px;border:1px solid var(--line2);background:#fafbfc;display:flex;align-items:center;justify-content:center;flex:none;font-weight:800;font-size:13px;color:#7c8594}
+.thumb.uc{background:var(--blue-soft);border-color:#d6e3ff;color:var(--blue)}
+.item .body{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.item .name{font-weight:800;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .price{font-weight:700;color:var(--orange);font-size:15px}
+.item .meta{color:var(--muted);font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .meta b{color:var(--fg)}
+.item .meta.lots{white-space:normal;line-height:1.4}
+.low{color:var(--amber)!important} .out{color:var(--red)!important}
+.dots{width:40px;height:40px;border-radius:12px;border:0;background:none;color:#9aa2b0;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.dots svg{width:22px;height:22px}
+.amt{text-align:right;flex:none;font-weight:800}
+.amt small{display:block;font-size:12.5px;font-weight:700}
+.empty{padding:28px 16px;text-align:center;color:var(--muted);font-weight:600}
+.badge{display:inline-block;font-size:11.5px;font-weight:800;padding:2px 8px;border-radius:999px;background:var(--soft);color:var(--muted);vertical-align:2px;margin-left:6px}
+.badge.red{background:var(--red-soft);color:var(--red)}
+
+/* cards */
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.card h2{margin:0;font-size:16px;font-weight:800}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.stat span{font-size:13px;color:var(--muted);font-weight:700}
+.stat b{font-size:21px;font-weight:800;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.stat.main{background:var(--blue);border-color:var(--blue);color:#fff}
+.stat.main span{color:#d6e3ff}
+.rows{display:flex;flex-direction:column}
+.r{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);font-weight:600}
+.r:last-child{border-bottom:0}
+.r .k{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.r .v{font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums}
+.warnbox{background:var(--amber-soft);color:#8a5a00;border-radius:14px;padding:12px 14px;font-weight:700;font-size:14px}
+
+/* menu */
+.mitem{display:flex;align-items:center;gap:14px;padding:16px;border:0;border-bottom:1px solid var(--line);background:none;width:100%;text-align:left;font-weight:700;font-size:16px}
+.mitem:last-child{border-bottom:0}
+.mitem .ic{width:40px;height:40px;border-radius:12px;background:var(--blue-soft);color:var(--blue);display:flex;align-items:center;justify-content:center;flex:none}
+.mitem .ic svg{width:20px;height:20px}
+.mitem .t{flex:1;min-width:0}
+.mitem .t small{display:block;color:var(--muted);font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mitem .chev{color:#b6bcc7;display:flex} .mitem .chev svg{width:20px;height:20px}
+.mitem.danger{color:var(--red)} .mitem.danger .ic{background:var(--red-soft);color:var(--red)}
+
+/* forms */
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.field label{font-size:13px;font-weight:700;color:var(--muted)}
+.field input,.field select{height:50px;border:1px solid var(--line2);border-radius:14px;padding:0 14px;background:var(--card);font-size:16px;font-weight:600;width:100%;min-width:0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.inrow{display:flex;gap:8px}
+.inrow input{flex:1}
+.btn{height:50px;border-radius:14px;border:0;background:var(--soft);font-weight:800;font-size:15px;padding:0 16px}
+.btn.primary{background:var(--blue);color:#fff}
+.btn.danger{background:var(--red-soft);color:var(--red)}
+.btn.small{height:50px;font-size:14px}
+.btn:disabled{opacity:.45}
+.btnrow{display:flex;gap:10px}
+.btnrow .btn{flex:1}
+.toggle{display:flex;align-items:center;justify-content:space-between;gap:10px;font-weight:700;padding:4px 0}
+.toggle input{width:22px;height:22px;accent-color:var(--blue)}
+.hint{font-size:13px;color:var(--muted);font-weight:600}
+.msg{font-size:14px;font-weight:700;min-height:1em;text-align:center}
+.msg.err{color:var(--red)} .msg.ok{color:var(--green)}
+.ptable{width:100%;border-collapse:collapse}
+.ptable th{font-size:12px;color:var(--muted);text-align:left;font-weight:700;padding:0 4px 6px}
+.ptable td{padding:4px}
+.ptable td:first-child{font-weight:700;font-size:14px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ptable input{height:42px;border:1px solid var(--line2);border-radius:12px;padding:0 10px;width:100%;min-width:70px;font-weight:600}
+
+/* cart */
+.cartbar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--navh) + 12px + env(safe-area-inset-bottom,0px));z-index:6;width:calc(100% - 32px);max-width:528px;border:0;border-radius:18px;background:var(--blue);color:#fff;font:inherit;font-weight:800;font-size:16px;padding:14px 18px;display:flex;align-items:center;gap:12px;box-shadow:0 8px 22px rgba(31,107,255,.35);cursor:pointer}
+.cartbar .n{background:#fff;color:var(--blue);border-radius:999px;min-width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;font-size:14px;padding:0 7px}
+.cartbar .sum{margin-left:auto}
+.cline{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.cline .t{flex:1;min-width:0}.cline .t small{display:block;color:var(--muted);font-weight:600}
+.cline .x{border:0;background:var(--red-soft,#fdecec);color:var(--red,#e5484d);width:34px;height:34px;border-radius:10px;font-size:18px;cursor:pointer}
+.inCart{color:var(--blue);font-weight:800}
+/* fab, sheet, toast */
+.fab{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--navh) + 16px + env(safe-area-inset-bottom,0px));z-index:6;border:0;border-radius:999px;background:var(--blue);color:#fff;font-weight:800;font-size:16px;padding:14px 26px;display:flex;gap:10px;align-items:center;box-shadow:0 8px 22px rgba(31,107,255,.35)}
+.fab svg{width:22px;height:22px}
+.scrim{position:fixed;inset:0;background:rgba(14,18,27,.45);z-index:20}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;max-width:560px;margin:0 auto;background:var(--card);border-radius:22px 22px 0 0;max-height:90vh;overflow-y:auto;
+  padding:10px max(16px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:14px}
+.grab{width:42px;height:5px;border-radius:3px;background:#dde1e7;margin:0 auto;flex:none}
+.sheet h3{margin:0;font-size:19px;font-weight:800}
+.sheet .sub{color:var(--muted);font-weight:600;margin-top:-8px}
+.stepper{display:flex;align-items:center;justify-content:center;gap:18px}
+.stepper button{width:52px;height:52px;border-radius:16px;border:0;background:var(--soft);font-size:26px;font-weight:700}
+.stepper button:disabled{opacity:.4}
+.stepper b{font-size:28px;font-weight:800;min-width:56px;text-align:center}
+.paygrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.paygrid .chip{border-radius:14px;padding:12px 6px;text-align:center;overflow:hidden;text-overflow:ellipsis}
+.total{display:flex;justify-content:space-between;align-items:baseline;font-weight:800;font-size:18px}
+.total b{font-size:24px}
+.act{display:flex;align-items:center;gap:12px;padding:14px 4px;border:0;border-bottom:1px solid var(--line);background:none;width:100%;text-align:left;font-weight:700;font-size:16px}
+.act svg{width:22px;height:22px;color:var(--muted)}
+.act:last-child{border-bottom:0}
+.act.danger,.act.danger svg{color:var(--red)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);top:calc(14px + env(safe-area-inset-top,0px));z-index:30;background:#14171f;color:#fff;font-weight:700;border-radius:14px;padding:12px 18px;max-width:calc(100% - 32px);box-shadow:0 8px 24px rgba(0,0,0,.2)}
+.toast.err{background:var(--red)}
+.busy{position:fixed;top:0;left:0;right:0;height:3px;background:var(--blue);z-index:40;transform-origin:left;animation:load 1.1s ease-in-out infinite}
+@keyframes load{0%{transform:scaleX(0)}60%{transform:scaleX(.8)}100%{transform:scaleX(1);opacity:0}}
+@media (prefers-reduced-motion:reduce){.busy{animation:none}}
+
+/* login */
+.auth{max-width:420px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;justify-content:center;gap:16px;padding:24px max(20px,env(safe-area-inset-right,0px)) 24px max(20px,env(safe-area-inset-left,0px))}
+.logo{width:64px;height:64px;border-radius:20px;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px}
+.auth h2{margin:0;font-size:26px;font-weight:800}
+@media (max-width:360px){.paygrid{grid-template-columns:repeat(2,minmax(0,1fr))}.stat b{font-size:18px}}
+
+/* ===== v2 look: big white panels on a light grey page, blue figures, round soft icon buttons ===== */
+:root{--bg:#f1f2f4;--line:#eef0f3;--muted:#8a93a3;--fg:#0f1420;--blue:#1d6cf5;--blue-soft:#e6f0ff;--sky:#22b6f0;--r:26px}
+html,body{background:var(--bg)}
+.app{background:var(--bg)}
+.top{background:var(--card);border-bottom:0;border-radius:0 0 var(--r) var(--r);padding-top:max(14px,env(safe-area-inset-top,0px));padding-bottom:14px;box-shadow:0 1px 0 var(--line)}
+.top h1{font-size:30px;font-weight:800;letter-spacing:-.5px;flex:none;max-width:60%}
+.top .count{min-width:44px;height:44px;border-radius:999px;background:var(--soft);color:var(--muted);display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;padding:0 12px}
+.top .count.on{color:var(--blue)}
+.top .grow{flex:1}
+.brand{display:flex;align-items:center;gap:12px;flex:1;min-width:0}
+.brand .mark{width:44px;height:44px;border-radius:13px;background:var(--blue);display:flex;align-items:center;justify-content:center;flex:none;color:#fff;font-family:"Poppins","Manrope",sans-serif;font-weight:800;font-size:16px;letter-spacing:.3px}
+.brand .mark svg{width:26px;height:26px}
+.brand .word{font-family:"Unbounded",var(--f);font-weight:700;font-size:19px;letter-spacing:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.round{width:52px;height:52px;border-radius:999px;border:0;background:var(--soft);color:var(--blue);display:inline-flex;align-items:center;justify-content:center;flex:none}
+.round svg{width:24px;height:24px}
+.avatar{width:52px;height:52px;border-radius:999px;border:0;background:var(--blue);color:#fff;font-weight:800;font-size:18px;display:inline-flex;align-items:center;justify-content:center;flex:none;letter-spacing:.5px}
+.screen{padding-top:14px;gap:14px}
+.card,.list{border:0;border-radius:var(--r)}
+.card{padding:22px 20px}
+.panel{background:var(--card);border-radius:var(--r);overflow:hidden}
+.phead{display:flex;align-items:center;gap:14px;padding:22px 20px 18px}
+.phead .tt{flex:1;min-width:0}
+.phead h2{margin:0;font-size:24px;font-weight:800;letter-spacing:-.3px}
+.phead .big{font-size:32px;font-weight:800;color:var(--blue);letter-spacing:-.5px;font-variant-numeric:tabular-nums;line-height:1.2;overflow-wrap:anywhere}
+.phead .big small{font-size:.62em;color:#97a3b6;font-weight:800;margin-left:4px}
+.phead .sel{border:0;background:none;color:var(--blue);font:inherit;font-weight:700;font-size:17px;padding:2px 0;display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+.phead .sel svg{width:18px;height:18px}
+.phead .ico{width:64px;height:64px;border-radius:999px;background:var(--blue-soft);color:var(--blue);display:flex;align-items:center;justify-content:center;flex:none}
+.phead .ico svg{width:28px;height:28px}
+.prow{display:flex;align-items:center;gap:12px;padding:16px 20px;border-top:1.5px solid var(--line);font-size:17px;font-weight:600;color:#3d4554}
+.prow .k{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prow .v{color:var(--blue);font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}
+.prow .v.plain{color:var(--fg)}
+.prow .rank{width:26px;height:26px;border-radius:999px;background:var(--blue-soft);color:var(--blue);font-size:13px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.prow.strong .k{color:var(--fg);font-weight:800}
+.pempty{padding:4px 20px 22px;color:var(--muted);font-weight:600}
+.chart{padding:6px 12px 14px;border-top:1.5px solid var(--line)}
+.chart svg{display:block;width:100%;height:auto}
+.datepill{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--navh) + 14px + env(safe-area-inset-bottom,0px));z-index:6;width:calc(100% - 32px);max-width:528px;height:60px;border:0;border-radius:999px;background:#eceef1;color:#3d4554;font:inherit;font-weight:700;font-size:19px;display:flex;align-items:center;justify-content:center;gap:12px;box-shadow:0 4px 18px rgba(15,20,32,.08)}
+.datepill svg{width:24px;height:24px;color:var(--blue)}
+.app.haspill{padding-bottom:calc(var(--navh) + 100px + env(safe-area-inset-bottom,0px))}
+.nav{border-top:0;box-shadow:0 -1px 0 var(--line)}
+.nav button{font-size:12.5px;color:#8f99aa}
+.nav button svg{width:27px;height:27px}
+.nav button[aria-current="page"] svg{fill:var(--blue-soft)}
+.searchbig{display:flex;align-items:center;gap:10px;background:var(--card);border-radius:18px;padding:0 16px;height:56px}
+.searchbig svg{width:24px;height:24px;color:var(--muted);flex:none}
+.searchbig input{border:0;outline:0;background:transparent;flex:1;min-width:0;font-size:17px;font-weight:600}
+.searchbig .tool{border:0;background:none;color:var(--blue);display:flex;padding:6px;border-left:1.5px solid #dfe3e9;padding-left:12px}
+.emptybig{background:var(--card);border-radius:var(--r);padding:56px 24px 60px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:12px}
+.emptybig .bars{display:flex;gap:4px;height:70px;align-items:stretch;margin-bottom:18px}
+.emptybig .bars i{display:block;background:#dde4ee;border-radius:1px}
+.emptybig h3{margin:0;font-size:22px;font-weight:800}
+.emptybig p{margin:0;color:#556073;font-weight:600;max-width:340px}
+.tline{display:flex;align-items:center;gap:12px;padding:16px 20px;border-top:1.5px solid var(--line);width:100%;background:none;border-left:0;border-right:0;border-bottom:0;text-align:left}
+.tline .l{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.tline .id{color:var(--blue);font-weight:700;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tline .tm{display:flex;align-items:center;gap:10px;font-weight:600;color:#3d4554;font-size:16px}
+.tline .pill{background:var(--soft);border-radius:999px;padding:3px 12px;font-size:14px;font-weight:700;color:#3d4554}
+.tline .r{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex:none;max-width:52%}
+.tline .amt2{color:var(--blue);font-weight:700;font-size:17px;white-space:nowrap}
+.tline .who{display:flex;align-items:center;gap:8px;font-weight:600;color:#3d4554;font-size:15px;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.tline .who i{width:14px;height:14px;border-radius:999px;background:linear-gradient(135deg,var(--sky),var(--blue));flex:none}
+.tline .pr{font-size:13px;font-weight:800}
+.dayhead{display:flex;align-items:center;justify-content:space-between;padding:22px 20px 16px;font-size:22px;font-weight:800}
+.paybar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--navh) + 12px + env(safe-area-inset-bottom,0px));z-index:6;width:calc(100% - 32px);max-width:528px;height:60px;border:0;border-radius:999px;background:var(--blue);color:#fff;font:inherit;font-weight:800;font-size:18px;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 8px 22px rgba(29,108,245,.35)}
+.qty{display:flex;align-items:center;gap:8px}
+.qty button{width:34px;height:34px;border-radius:10px;border:0;background:var(--soft);font-size:20px;font-weight:700;color:var(--fg)}
+.qty b{min-width:28px;text-align:center;font-size:16px}
+.cline2{display:flex;align-items:center;gap:12px;padding:14px 20px;border-top:1.5px solid var(--line)}
+.cline2 .t{flex:1;min-width:0}
+.cline2 .t b{display:block;font-size:17px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cline2 .t button{border:0;background:none;padding:0;color:var(--orange);font:inherit;font-weight:700;font-size:15px;cursor:pointer}
+.cline2 .x{border:0;background:none;color:#a3abb8;font-size:22px;width:32px;height:32px}
+.item{padding:16px 14px 16px 18px}
+.thumb{border-radius:18px;width:60px;height:60px}
+.mitem{padding:18px 20px}
+.chip{border-width:1.5px;padding:9px 16px;font-size:15px}
+.sheet{border-radius:28px 28px 0 0}
+@media (max-width:380px){.top h1{font-size:26px}.phead .big{font-size:27px}.phead .ico{width:54px;height:54px}.brand .word{font-size:16px;letter-spacing:2px}}
+</style>
+</head>
+<body>
+<div class="busy" id="busy" hidden></div>
+<div class="toast" id="toast" hidden role="status"></div>
+
+<!-- SETUP -->
+<form class="auth" id="vSetup" hidden novalidate>
+  <div class="logo">UC</div>
+  <h2>Admin parolini yarating</h2>
+  <p class="hint" style="margin:0">Bu birinchi ishga tushirish. Keyin «admin» login va shu parol bilan kirasiz.</p>
+  <div class="field"><label for="suPass">Yangi parol (kamida 6 belgi)</label><input id="suPass" type="password" autocomplete="new-password"></div>
+  <div class="field"><label for="suPass2">Parolni takrorlang</label><input id="suPass2" type="password" autocomplete="new-password"></div>
+  <button class="btn primary" type="submit" id="setupBtn">Saqlash va kirish</button>
+  <div class="msg" id="setupMsg"></div>
+</form>
+
+<!-- LOGIN -->
+<form class="auth" id="vLogin" hidden novalidate>
+  <div class="logo">UC</div>
+  <h2 id="loginTitle">Kirish</h2>
+  <p class="hint" style="margin:0" id="loginHint">Login va parolni admin beradi.</p>
+  <div class="field"><label for="lLogin">Login</label><input id="lLogin" autocomplete="username" autocapitalize="none" spellcheck="false"></div>
+  <div class="field"><label for="lPass">Parol</label><input id="lPass" type="password" autocomplete="current-password"></div>
+  <button class="btn primary" type="submit" id="loginBtn">Kirish</button>
+  <div class="msg" id="loginMsg"></div>
+</form>
+
+<!-- APP -->
+<div class="app" id="vApp" hidden>
+  <header class="top">
+    <button type="button" class="round" id="backBtn" hidden aria-label="Orqaga"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <div class="brand" id="brand"><span class="mark">UC</span><span class="word">UC SAVDO</span></div>
+    <h1 id="title" hidden>UC Savdo</h1>
+    <span class="count" id="titleCount" hidden></span>
+    <span class="grow" id="titleGrow" hidden></span>
+    <span class="role" id="roleBadge" hidden></span>
+    <button type="button" class="round" id="refreshBtn" aria-label="Yangilash"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></button>
+    <button type="button" class="avatar" id="avatar" aria-label="Profil"></button>
+  </header>
+  <main class="screen" id="screen"></main>
+</div>
+<button type="button" class="cartbar" id="cartbar" hidden></button>
+<button type="button" class="datepill" id="datePill" hidden></button>
+<button type="button" class="paybar" id="payBar" hidden></button>
+<button type="button" class="fab" id="fab" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6v12M8 6v12M12 6v12M16 6v12M20 6v12"/></svg><span>Tezkor sotuv</span></button>
+<nav class="nav" id="nav" hidden><div class="nav-in" id="navIn"></div></nav>
+<div class="scrim" id="scrim" hidden></div>
+<div class="sheet" id="sheet" hidden role="dialog" aria-modal="true"></div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const ls = { get(k) { try { return localStorage.getItem(k); } catch (_) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (_) {} }, del(k) { try { localStorage.removeItem(k); } catch (_) {} } };
+  // Server: the Google Apps Script web app (data stays in the Google Sheet). The page itself is hosted on GitHub Pages.
+  const API_URL = "https://script.google.com/macros/s/AKfycbx63GuARpue0EBErYhtjrCGuE_Wz6oO9Hetr-89g59OTf2wHkBGIltQu-FMwFslvfq9/exec";
+  let token = ls.get("uc.token"), linkShop = "", linkShopName = "";
+  // Old links carried the login in the address (?k=…); take it once, then keep it only in this device's storage.
+  function setAddress() {
+    const u = new URL(location.href); u.searchParams.delete("k");
+    if (linkShop) u.searchParams.set("d", linkShop); else u.searchParams.delete("d");
+    try { history.replaceState(null, "", u.pathname + u.search + u.hash); } catch (_) {}
+  }
+  function saveToken(t) { token = t; ls.set("uc.token", t); setAddress(); }
+
+  const ICON = {
+    home: '<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
+    cart: '<path d="M3 4h2l2.4 11h11l2-8H6.2"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/>',
+    sell: '<rect x="4" y="5" width="16" height="12" rx="2"/><path d="M8 9h8M8 13h5M9 21h6"/>',
+    doc: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>',
+    grid: '<rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/>',
+    search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    dots: '<circle cx="5" cy="12" r="1.8" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.8" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.8" fill="currentColor" stroke="none"/>',
+    shop: '<path d="M4 9l1.5-5h13L20 9M4 9h16v11H4zM9 20v-5h6v5"/>',
+    users: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.5 3.3-5.5 6.5-5.5s5.7 2 6.5 5.5M16 4.8a3.3 3.3 0 0 1 0 6.4M18 14.6c2 .7 3.2 2.6 3.6 5.4"/>',
+    box: '<path d="M3 7l9-4 9 4-9 4zM3 7v10l9 4 9-4V7M12 11v10"/>',
+    edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>',
+    trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',
+    gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>',
+    key: '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3M15 8l2 2"/>',
+    out: '<path d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M10 17l5-5-5-5M15 12H3"/>',
+    chev: '<path d="M9 6l6 6-6 6"/>',
+    down: '<path d="M6 9l6 6 6-6"/>',
+    cal: '<rect x="3.5" y="5" width="17" height="15.5" rx="3" fill="currentColor" stroke="none"/><path d="M8 3v4M16 3v4" stroke-width="2.4"/><path d="M3.5 10h17" stroke="#fff" stroke-width="1.6"/>',
+    bars: '<rect x="4" y="11" width="4" height="9" rx="2" fill="currentColor" stroke="none"/><rect x="10" y="5" width="4" height="15" rx="2" fill="currentColor" stroke="none"/><rect x="16" y="8" width="4" height="12" rx="2" fill="currentColor" stroke="none"/>',
+    cash: '<rect x="2.5" y="6" width="19" height="12" rx="3" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="2.6" fill="#fff" stroke="none"/><circle cx="6.5" cy="12" r="1" fill="#fff" stroke="none"/><circle cx="17.5" cy="12" r="1" fill="#fff" stroke="none"/>',
+    list: '<path d="M5 7h14M5 12h14M5 17h10" stroke-width="2.6"/>',
+    till: '<rect x="4" y="12" width="16" height="8" rx="2" fill="currentColor" stroke="none"/><rect x="7" y="4" width="10" height="6" rx="1.5"/><path d="M12 10v2"/><path d="M8 15h1M11 15h1M14 15h1M8 17.5h8" stroke="#fff"/>',
+    cube: '<path d="M12 2.8l8 4.2v10L12 21.2 4 17V7z" fill="currentColor" stroke="none"/><path d="M4.5 7.2L12 11.3l7.5-4.1M12 11.3v9.4" stroke="#fff" stroke-width="1.6"/>',
+    scan: '<path d="M4 6v12M7.5 6v12M10.5 6v12M14 6v12M17 6v12M20 6v12" stroke-width="2.2"/>',
+    store: '<path d="M4 9l1.5-5h13L20 9M4 9h16v11H4zM9 20v-5h6v5"/>',
+  };
+  const svg = (n, sw) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw || 2}" stroke-linecap="round" stroke-linejoin="round">${ICON[n]}</svg>`;
+
+  const st = {
+    view: "boot", role: null, me: null, data: null,
+    tab: ls.get("uc.tab") || "home", sellerBy: "sum", topBy: "sum", day: "", sub: [], period: "today", shopFilter: ls.get("uc.shopF") || "all",
+    catFilter: "all", catQ: "", sellQ: "", txQ: "",
+    selShop: ls.get("uc.shop"), selStaff: "admin", selPay: ls.get("uc.pay"), pending: 0, saving: false,
+  };
+
+  const fmt = n => Math.round(n || 0).toLocaleString("ru-RU").replace(/[\s,  ]/g, " ");
+  const toNum = v => { const n = Number(String(v == null ? "" : v).replace(/[^\d.-]/g, "")); return isFinite(n) ? n : 0; };
+  const pad = n => String(n).padStart(2, "0");
+  const dayKey = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const tm = ts => { const t = new Date(ts); return dayKey(t) === dayKey(new Date()) ? `${pad(t.getHours())}:${pad(t.getMinutes())}` : `${pad(t.getDate())}.${pad(t.getMonth() + 1)} ${pad(t.getHours())}:${pad(t.getMinutes())}`; };
+  const tmFull = ts => { const t = new Date(ts); return `${pad(t.getDate())}.${pad(t.getMonth() + 1)}.${t.getFullYear()} ${pad(t.getHours())}:${pad(t.getMinutes())}`; };
+  const startOfDay = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime(); };
+  const startOfMonth = () => { const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 0); return d.getTime(); };
+  const dayStartOf = key => { const [y, m, d] = key.split("-").map(Number); return new Date(y, m - 1, d).getTime(); };
+  const periodFrom = () => st.period === "today" ? startOfDay() : st.period === "yday" ? startOfDay() - 864e5 : st.period === "week" ? startOfDay() - 6 * 864e5 : st.period === "month" ? startOfMonth() : st.period === "day" ? dayStartOf(st.day) : 0;
+  const periodTo = () => st.period === "yday" ? startOfDay() : st.period === "day" ? dayStartOf(st.day) + 864e5 : Infinity;
+  const oneDay = () => ["today", "yday", "day"].includes(st.period);
+  const dmy = ts => { const t = new Date(ts); return `${pad(t.getDate())}.${pad(t.getMonth() + 1)}.${t.getFullYear()}`; };
+  const periodLabel = () => ({ today: dmy(Date.now()), yday: dmy(Date.now() - 864e5), week: "Oxirgi 7 kun", month: "Shu oy", all: "Hammasi" })[st.period] || dmy(dayStartOf(st.day));
+  const isAdmin = () => st.role === "admin";
+  const isPartner = () => !!(st.me && st.me.partner);
+  const D = () => st.data || { cfg: { payments: [], lowStock: 5 }, products: [], shops: [], staff: [], sales: [], today: [], kirim: [], stock: { left: 0, byPid: {} }, monthByStaff: {} };
+  const prodById = id => D().products.find(p => p.id === id);
+  const shopById = id => D().shops.find(s => s.id === id);
+  const staffById = id => D().staff.find(s => s.id === id);
+  const activeShops = () => D().shops.filter(s => s.active);
+  // Batches left in stock (oldest first); each keeps its own purchase price. Admin only.
+  const lots = pid => { const r = (D().stock.byPid || {})[pid]; return r && r.lots ? r.lots : []; };
+  const nextCost = pid => { const l = lots(pid)[0]; return l ? l.unit : 0; };
+  const lotsTxt = pid => lots(pid).map(l => `<span style="white-space:nowrap">${fmt(l.left)} × ${fmt(l.unit)}</span>`).join(" · ");
+  const left = pid => { const r = (D().stock.byPid || {})[pid]; return r ? r.left : 0; };
+  const shopPrice = (shop, p) => { const q = shop && (shop.prices || []).find(x => x.pid === p.id); return (q && q.price) || 0; };
+  const thumbTxt = p => { const m = String(p.name).match(/\d+/); return m ? m[0].slice(0, 5) : String(p.name).slice(0, 2).toUpperCase(); };
+  const genPass = () => { const a = "abcdefghjkmnpqrstuvwxyz23456789"; const r = new Uint32Array(7); crypto.getRandomValues(r); return [...r].map(b => a[b % a.length]).join(""); };
+  const sum = (a, f) => a.reduce((x, s) => x + f(s), 0);
+  // Cart: several products sold together with one payment. Kept in memory until sold.
+  st.cart = [];
+  const inCart = pid => sum(st.cart.filter(c => c.pid === pid), c => c.n);
+  const cartTotal = () => sum(st.cart, c => c.n * c.unit);
+  // Admin money per sale: the shop pays the shop cost (cost); the warehouse paid whCost for those pieces.
+  const myProfit = s => (s.cost || 0) - (s.whCost || 0);
+  const shopProfit = s => s.price - (s.cost || 0);
+
+  // ---------- server
+  function busy(d) { st.pending += d; $("busy").hidden = st.pending <= 0; }
+  // text/plain keeps the request "simple" (no CORS preflight); Apps Script answers through a redirect fetch follows.
+  async function call(action, payload) {
+    busy(1);
+    let r;
+    try {
+      const res = await fetch(API_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ t: token, a: action, p: payload || {} }), redirect: "follow" });
+      r = await res.json();
+    } catch (_) {
+      busy(-1); throw new Error("Server bilan aloqa yo'q. Internetni tekshirib, qayta urinib ko'ring.");
+    }
+    busy(-1);
+    if (r && r.ok) return r.data;
+    if (r && r.auth) toLogin(r.error);
+    throw new Error((r && r.error) || "Xatolik yuz berdi.");
+  }
+  async function load() {
+    try {
+      const d = await call("state", { from: periodFrom(), dayStart: startOfDay(), monthStart: startOfMonth() });
+      st.data = d; st.role = d.role; st.me = d.me; st.view = "app";
+      if (st.me && st.me.shopId) st.selShop = st.me.shopId;
+      else if (linkShop && d.shops.some(s => s.id === linkShop && s.active)) st.selShop = linkShop;
+      render();
+    } catch (e) { if (st.view === "app") toast(e.message, true); }
+  }
+  let toastT;
+  function toast(t, err) { const b = $("toast"); b.textContent = t; b.className = "toast" + (err ? " err" : ""); b.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { b.hidden = true; }, err ? 4500 : 2600); }
+  function toLogin(reason) {
+    token = null; ls.del("uc.token"); setAddress(); st.role = null; st.me = null; st.data = null; st.view = "login"; closeSheet();
+    $("loginMsg").className = reason ? "msg err" : "msg"; $("loginMsg").textContent = reason || ""; $("lPass").value = "";
+    render();
+  }
+
+  // ---------- shell
+  const TABS = () => isAdmin()
+    ? [["home", "Asosiy", "home"], ["catalog", "Ombor", "cart"], ["report", "Do'konlar", "shop"], ["tx", "Tranzaksiyalar", "doc"], ["menu", "Menu", "grid"]]
+    : [["home", "Asosiy", "home"], ["catalog", "Katalog", "cart"], ["sell", "Sotuv", "scan"], ["tx", "Tranzaksiyalar", "doc"], ["menu", "Menu", "grid"]];
+  const TITLES = { home: "Asosiy", catalog: isAdmin() ? "Ombor" : "Katalog", sell: "Savatcha", report: "Do'konlar", tx: "Tranzaksiyalar", menu: "Menu",
+    shops: "Do'konlar", shop: "Do'kon", staff: "Hodimlar", person: "Hodim", kirim: "Kirimlar", settings: "Sozlamalar", password: "Admin paroli" };
+
+  function render() {
+    $("vSetup").hidden = st.view !== "setup"; $("vLogin").hidden = st.view !== "login";
+    const inApp = st.view === "app";
+    $("vApp").hidden = !inApp; $("nav").hidden = !inApp;
+    if (!inApp) { $("fab").hidden = true; $("cartbar").hidden = true; $("datePill").hidden = true; $("payBar").hidden = true; return; }
+    if (!TABS().some(t => t[0] === st.tab)) st.tab = isAdmin() ? "home" : "sell";
+    $("navIn").innerHTML = TABS().map(([k, l, ic]) => `<button type="button" data-tab="${k}" ${st.tab === k ? 'aria-current="page"' : ""}>${svg(ic, 2)}<span>${l}</span></button>`).join("");
+    const sub = st.tab === "menu" ? st.sub[st.sub.length - 1] : null;
+    if (isAdmin() && st.shopFilter !== "all" && !curShop()) st.shopFilter = "all";
+    // Header: the brand on Asosiy; elsewhere a big title with a counter, like a POS app.
+    const onHome = st.tab === "home" && !sub;
+    $("brand").hidden = !onHome; $("title").hidden = onHome; $("titleGrow").hidden = onHome;
+    $("title").textContent = sub ? (TITLES[sub.v] || "") : st.tab === "report" && curShop() ? curShop().name : TITLES[st.tab];
+    const cnt = sub ? null : st.tab === "sell" ? st.cart.length : st.tab === "tx" ? receipts(filteredSales()).length : st.tab === "catalog" ? D().products.length : null;
+    $("titleCount").hidden = cnt === null; $("titleCount").textContent = cnt === null ? "" : fmt(cnt); $("titleCount").classList.toggle("on", !!cnt);
+    $("backBtn").hidden = !sub;
+    $("avatar").textContent = initials();
+    $("fab").hidden = true; $("cartbar").hidden = true;
+    const pill = !sub && ["home", "tx", "report"].includes(st.tab), pay = !sub && st.tab === "sell" && st.cart.length > 0;
+    $("datePill").hidden = !pill; if (pill) $("datePill").innerHTML = `${svg("cal")}<span>${esc(periodLabel())}</span>`;
+    $("payBar").hidden = !pay; if (pay) $("payBar").innerHTML = `Sotish · ${fmt(cartTotal())} UZS`;
+    $("vApp").classList.toggle("haspill", pill || pay); $("vApp").style.paddingBottom = "";
+    const fn = sub ? SUB[sub.v] : SCREENS[st.tab];
+    $("screen").innerHTML = fn ? fn(sub) : "";
+    if (fn && fn.after) fn.after(sub);
+  }
+  // Search boxes re-render the list as you type and keep the caret where it was.
+  function liveSearch(id, key) {
+    const i = $(id); if (!i) return;
+    i.addEventListener("input", () => { st[key] = i.value; const pos = i.selectionStart; render(); const j = $(id); if (j) { j.focus(); try { j.setSelectionRange(pos, pos); } catch (_) {} } });
+  }
+
+  // ---------- screens
+  // The period is picked from the date pill at the bottom; screens no longer carry their own chips.
+  const periodChips = () => "";
+  const initials = () => { const n = isAdmin() ? "Admin" : (st.me && st.me.name) || "?"; const w = n.trim().split(/\s+/); return ((w[0] || "")[0] + ((w[1] || "")[0] || (w[0] || "")[1] || "")).toUpperCase(); };
+  // Receipts: rows of one checkout share a chek id; older rows stand alone.
+  const receipts = list => { const m = new Map(); list.forEach(s => { const k = s.chek || s.id; if (!m.has(k)) m.set(k, []); m.get(k).push(s); }); return [...m.entries()].map(([k, xs]) => ({ k, xs, ts: xs[0].ts })).sort((a, b) => b.ts - a.ts); };
+  const rcNo = k => "#" + String(k).replace(/[^a-z0-9]/gi, "").slice(-8).toUpperCase();
+  const money = v => `${fmt(v)} <small>UZS</small>`;
+  const panel = (title, big, icon, rows, extraHead) => `<section class="panel"><div class="phead"><div class="tt"><h2>${title}</h2>${big !== null ? `<div class="big">${big}</div>` : ""}${extraHead || ""}</div><span class="ico">${svg(icon)}</span></div>${rows}</section>`;
+  const prow = (k, v, cls) => `<div class="prow ${cls || ""}"><span class="k">${k}</span><span class="v">${v}</span></div>`;
+  // Sales line: hours for one day, days for longer periods. Smooth line with a soft fill.
+  function chartSvg(list) {
+    let keys, label, bucket;
+    if (oneDay() || !list.length) {
+      const hs = list.map(s => new Date(s.ts).getHours());
+      const a = Math.min(8, ...hs), b = Math.max(23, ...hs);
+      keys = []; for (let h = a; h <= b; h++) keys.push(h);
+      bucket = s => new Date(s.ts).getHours(); label = h => `${pad(h)}:00`;
+    } else {
+      const from = periodFrom() || Math.min(...list.map(s => s.ts)), to = Math.min(Date.now(), periodTo() - 1);
+      keys = []; for (let d = new Date(from); d.getTime() <= to; d.setDate(d.getDate() + 1)) { d.setHours(0, 0, 0, 0); keys.push(dayKey(d)); }
+      if (keys.length > 62) keys = keys.slice(-62);
+      bucket = s => dayKey(new Date(s.ts)); label = k => k.slice(8, 10) + "." + k.slice(5, 7);
+    }
+    const vals = keys.map(k => sum(list.filter(s => bucket(s) === k), s => s.price));
+    const max = Math.max(...vals, 1), W = 340, H = 190, L = 18, Rr = 48, T = 10, B = 28, iw = W - L - Rr, ih = H - T - B;
+    const nice = (() => { const p = Math.pow(10, Math.floor(Math.log10(max))); const m = [1, 2, 2.5, 5, 10].find(x => x * p >= max); return m * p; })();
+    const xs = i => L + (keys.length < 2 ? iw / 2 : i * iw / (keys.length - 1)), ys = v => T + ih - v / nice * ih;
+    const pts = vals.map((v, i) => [xs(i), ys(v)]);
+    let d = `M${pts[0][0]},${pts[0][1]}`;
+    for (let i = 1; i < pts.length; i++) { const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], cx = (x0 + x1) / 2; d += ` C${cx},${y0} ${cx},${y1} ${x1},${y1}`; }
+    const short = v => v >= 1e6 ? +(v / 1e6).toFixed(1) + "M" : v >= 1e3 ? +(v / 1e3).toFixed(0) + "k" : String(v);
+    const grid = [0, .25, .5, .75, 1].map(f => `<line x1="${L}" x2="${L + iw}" y1="${T + ih - f * ih}" y2="${T + ih - f * ih}" stroke="#eef0f3"/><text x="${W - 2}" y="${T + ih - f * ih + 4}" text-anchor="end" font-size="11" fill="#97a3b6" font-weight="600">${short(nice * f)}</text>`).join("");
+    const step = Math.max(1, Math.ceil(keys.length / 6));
+    const vgrid = keys.map((k, i) => `<line x1="${xs(i)}" x2="${xs(i)}" y1="${T}" y2="${T + ih}" stroke="#f3f4f6"/>` + (i % step === 0 ? `<text x="${xs(i)}" y="${H - 8}" text-anchor="middle" font-size="11" fill="#97a3b6" font-weight="600">${label(k)}</text>` : "")).join("");
+    return `<div class="chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Sotuvlar grafigi"><defs><linearGradient id="gl" x1="0" x2="1"><stop offset="0" stop-color="#22b6f0"/><stop offset="1" stop-color="#1d6cf5"/></linearGradient><linearGradient id="ga" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#22b6f0" stop-opacity=".18"/><stop offset="1" stop-color="#22b6f0" stop-opacity="0"/></linearGradient></defs>${vgrid}${grid}<path d="${d} L${pts[pts.length - 1][0]},${T + ih} L${pts[0][0]},${T + ih}Z" fill="url(#ga)"/><path d="${d}" fill="none" stroke="url(#gl)" stroke-width="3" stroke-linecap="round"/></svg></div>`;
+  }
+  // The admin works "inside" one shop or across all of them; the choice is kept on this device.
+  const curShop = () => isAdmin() && st.shopFilter !== "all" ? shopById(st.shopFilter) || null : null;
+  const shopFilterSel = () => isAdmin() && D().shops.length ? `<button type="button" class="shopbar" data-act="pickShop"><span class="ic">${svg("shop")}</span><b>${esc(curShop() ? curShop().name : "Barcha do'konlar")}</b><span class="go">Almashtirish</span></button>` : "";
+  const salesInPeriod = () => D().sales.filter(s => s.ts < periodTo());
+  const filteredSales = () => { const c = curShop(); return salesInPeriod().filter(s => !c || s.shopId === c.id); };
+
+  const SCREENS = {};
+  SCREENS.home = () => {
+    const list = filteredSales(), admin = isAdmin(), partner = isPartner(), low = D().cfg.lowStock;
+    const rc = receipts(list), dona = sum(list, s => s.dona || 1);
+    let out = shopFilterSel();
+    out += panel("Sotuvlar", money(sum(list, s => s.price)), "bars", chartSvg(list));
+    if (admin) out += panel("Mening foydam", money(sum(list, myProfit)), "cube",
+      prow("Do'konlar savdosi", money(sum(list, s => s.price))) + prow("Do'kon tannarxi", money(sum(list, s => s.cost || 0))) + prow("Ombor kelish narxi", money(sum(list, s => s.whCost || 0))) + prow("Do'konlar foydasi", money(sum(list, shopProfit))));
+    if (partner) out += panel("Do'kon foydasi", money(sum(list, shopProfit)), "cube",
+      prow("Savdo", money(sum(list, s => s.price))) + prow("Tannarx", money(sum(list, s => s.cost || 0))));
+    const pays = [...new Set(list.map(s => s.pay))].map(p => ({ p, v: sum(list.filter(s => s.pay === p), s => s.price) })).sort((a, b) => b.v - a.v);
+    out += panel("To'lovlar", money(sum(list, s => s.price)), "cash", pays.length ? pays.map(x => prow(esc(x.p), money(x.v))).join("") : `<div class="pempty">Bu davrda to'lov yo'q.</div>`);
+    out += panel("Tranzaksiyalar", `${fmt(rc.length)} <small>birlik</small>`, "list",
+      prow("Tovarlar", `${fmt(dona)} birlik`) + prow("Xil tovarlar", `${fmt(new Set(list.map(s => s.pid)).size)} birlik`) + prow("O'rtacha chek", money(rc.length ? sum(list, s => s.price) / rc.length : 0)));
+    // Best sellers / top products with a switchable measure.
+    const SB = { sum: ["Savdo miqdori", xs => money(sum(xs, s => s.price)), xs => sum(xs, s => s.price)], n: ["Sotuvlar soni", xs => `${fmt(receipts(xs).length)} ta`, xs => receipts(xs).length] };
+    if (admin || partner) {
+      const by = SB[st.sellerBy] ? st.sellerBy : "sum", [lab, show, val] = SB[by];
+      const g = [...new Set(list.map(s => s.staffName || "admin"))].map(n => ({ n, xs: list.filter(s => (s.staffName || "admin") === n) })).sort((a, b) => val(b.xs) - val(a.xs));
+      out += panel("Eng yaxshi sotuvchilar", null, "till", g.length ? g.slice(0, 10).map((x, i) => `<div class="prow"><span class="rank">${i + 1}</span><span class="k">${esc(x.n)}</span><span class="v">${show(x.xs)}</span></div>`).join("") : `<div class="pempty">Bu davrda sotuv yo'q.</div>`,
+        `<button type="button" class="sel" data-cycle="sellerBy">${lab} ${svg("down", 2.4)}</button>`);
+    }
+    const TB = { sum: ["Savdo", xs => money(sum(xs, s => s.price)), xs => sum(xs, s => s.price)], dona: ["Dona", xs => `${fmt(sum(xs, s => s.dona || 1))} dona`, xs => sum(xs, s => s.dona || 1)] };
+    if (admin) TB.profit = ["Mening foydam", xs => money(sum(xs, myProfit)), xs => sum(xs, myProfit)];
+    if (partner) TB.profit = ["Do'kon foydasi", xs => money(sum(xs, shopProfit)), xs => sum(xs, shopProfit)];
+    const tb = TB[st.topBy] ? st.topBy : "sum", [tl, tshow, tval] = TB[tb];
+    const tp = [...new Set(list.map(s => s.pid))].map(pid => ({ n: (prodById(pid) || {}).name || (list.find(s => s.pid === pid) || {}).pname || "—", xs: list.filter(s => s.pid === pid) })).sort((a, b) => tval(b.xs) - tval(a.xs));
+    out += panel("Top tovarlar", null, "cube", tp.length ? tp.slice(0, 10).map((x, i) => `<div class="prow"><span class="rank">${i + 1}</span><span class="k">${esc(x.n)}</span><span class="v">${tshow(x.xs)}</span></div>`).join("") : `<div class="pempty">Bu davrda sotuv yo'q.</div>`,
+      `<button type="button" class="sel" data-cycle="topBy">${tl} ${svg("down", 2.4)}</button>`);
+    if (admin && !curShop()) {
+      const g = activeShops().map(sh => ({ n: sh.name, xs: list.filter(s => s.shopId === sh.id) })).sort((a, b) => sum(b.xs, myProfit) - sum(a.xs, myProfit));
+      out += panel("Do'konlar", `${fmt(g.length)} <small>ta</small>`, "store", g.map(x => prow(esc(x.n) + ` <span class="muted">· ${fmt(sum(x.xs, s => s.dona || 1))} dona</span>`, money(sum(x.xs, myProfit)))).join("") || `<div class="pempty">Do'kon yo'q.</div>`);
+    }
+    if (partner) {
+      const sh = shopById(st.me.shopId), prods = D().products;
+      const rows = sh ? (sh.prices || []).filter(q => prods.some(p => p.id === q.pid)).map(q => prow(esc(prods.find(p => p.id === q.pid).name), `${q.cost ? fmt(q.cost) : "—"} / ${q.price ? fmt(q.price) : "—"}`)).join("") : "";
+      out += panel("Do'kon narxlari", null, "doc", rows ? `<div class="prow"><span class="k muted">Tovar</span><span class="v plain muted">tannarx / sotuv</span></div>` + rows : `<div class="pempty">Narxlar hali kiritilmagan.</div>`);
+    }
+    const lowList = D().products.filter(p => p.active && !p.noStock && left(p.id) < low);
+    out += panel("Omborda", `${fmt(D().stock.left)} <small>dona</small>`, "box", lowList.length
+      ? lowList.slice(0, 10).map(p => `<div class="prow"><span class="k">${esc(p.name)}</span><span class="v ${left(p.id) <= 0 ? "out" : "low"}">${left(p.id) <= 0 ? "tugagan" : fmt(left(p.id)) + " dona"}</span></div>`).join("")
+      : `<div class="pempty">Barcha tovarlar yetarli.</div>`);
+    return out;
+  };
+
+  // Per-shop report for the admin: pieces sold and money, by shop and by product.
+  SCREENS.report = () => {
+    const list = salesInPeriod();
+    const shopIds = [...new Set([...activeShops().map(s => s.id), ...list.map(s => s.shopId)])];
+    const money = ss => `<div class="rows">
+      <div class="r"><span class="k">Sotildi</span><span class="v">${fmt(sum(ss, s => s.dona || 1))} dona</span></div>
+      <div class="r"><span class="k">Do'kon savdosi <span class="muted">· sotuv narxida</span></span><span class="v">${fmt(sum(ss, s => s.price))}</span></div>
+      <div class="r"><span class="k">Do'kon tannarxi <span class="muted">· menga to'laydi</span></span><span class="v">${fmt(sum(ss, s => s.cost || 0))}</span></div>
+      <div class="r"><span class="k">Ombor kelish narxi</span><span class="v">${fmt(sum(ss, s => s.whCost || 0))}</span></div>
+      <div class="r"><span class="k"><b>Mening foydam</b></span><span class="v"><b>${fmt(sum(ss, myProfit))}</b></span></div>
+      <div class="r"><span class="k">Do'kon foydasi</span><span class="v">${fmt(sum(ss, shopProfit))}</span></div></div>`;
+    const cur = curShop();
+    if (cur) return periodChips() + shopFilterSel() + shopView(cur, list.filter(s => s.shopId === cur.id), money);
+    const cards = shopIds.map(id => {
+      const ss = list.filter(s => s.shopId === id), sh = shopById(id);
+      const name = sh ? sh.name : ((ss[0] || {}).shopName || "—");
+      const head = `<div class="cardhead"><h2>${esc(name)}</h2>${sh && sh.active ? `<button type="button" class="linkbtn" data-pick="${esc(id)}">Kirish ›</button>` : ""}</div>`;
+      if (!ss.length) return { n: 0, html: `<div class="card">${head}<div class="hint">Bu davrda sotuv yo'q.</div></div>` };
+      const pids = [...new Set(ss.map(s => s.pid))].map(pid => ({ pid, xs: ss.filter(s => s.pid === pid) })).sort((a, b) => sum(b.xs, s => s.dona || 1) - sum(a.xs, s => s.dona || 1));
+      const byProd = `<div class="hint" style="margin-top:6px">Tovarlar bo'yicha · dona · mening foydam</div><div class="rows">${pids.map(x => `<div class="r"><span class="k">${esc((prodById(x.pid) || {}).name || x.xs[0].pname || "—")} <span class="muted">· ${fmt(sum(x.xs, s => s.dona || 1))} dona</span></span><span class="v">${fmt(sum(x.xs, myProfit))}</span></div>`).join("")}</div>`;
+      return { n: sum(ss, myProfit), html: `<div class="card">${head}${money(ss)}${byProd}</div>` };
+    }).sort((a, b) => b.n - a.n);
+    const total = list.length ? `<div class="card"><h2>Barcha do'konlar</h2>${money(list)}</div>` : "";
+    return periodChips() + shopFilterSel() + (shopIds.length ? total + cards.map(c => c.html).join("") : `<div class="empty">Hali do'kon yo'q. Menu → Do'konlar bo'limida qo'shing.</div>`);
+  };
+
+  // One shop from the inside: its money, products, sellers and editable prices.
+  function shopView(sh, ss, money) {
+    const pids = [...new Set(ss.map(s => s.pid))].map(pid => ({ pid, xs: ss.filter(s => s.pid === pid) })).sort((a, b) => sum(b.xs, s => s.dona || 1) - sum(a.xs, s => s.dona || 1));
+    const sellers = [...new Set(ss.map(s => s.staffId || ""))].map(id => ({ id, xs: ss.filter(s => (s.staffId || "") === id) }));
+    const rows = (arr, name, val) => `<div class="rows">${arr.map(x => `<div class="r"><span class="k">${name(x)}</span><span class="v">${val(x)}</span></div>`).join("")}</div>`;
+    return `<div class="card"><h2>Savdo va foyda</h2>${ss.length ? money(ss) : `<div class="hint">Bu davrda sotuv yo'q.</div>`}</div>`
+      + (pids.length ? `<div class="card"><h2>Tovarlar</h2><div class="hint">dona · do'kon savdosi · mening foydam</div>${rows(pids, x => `${esc((prodById(x.pid) || {}).name || x.xs[0].pname || "—")} <span class="muted">· ${fmt(sum(x.xs, s => s.dona || 1))} dona · ${fmt(sum(x.xs, s => s.price))}</span>`, x => fmt(sum(x.xs, myProfit)))}</div>` : "")
+      + (sellers.length ? `<div class="card"><h2>Sotuvchilar</h2>${rows(sellers, x => `${esc((staffById(x.id) || {}).name || x.xs[0].staffName || "admin")} <span class="muted">· ${x.xs.length} ta sotuv</span>`, x => fmt(sum(x.xs, s => s.price)))}</div>` : "")
+      + `<div class="card"><h2>Narxlar</h2>${priceTable(sh)}<button type="button" class="btn primary" data-act="saveShopPrices" data-id="${esc(sh.id)}">Narxlarni saqlash</button></div>`;
+  }
+  function priceTable(s) {
+    const prods = D().products.filter(p => p.active);
+    if (!prods.length) return `<div class="hint">Omborda tovar yo'q.</div>`;
+    return `<div class="hint"><b>Tannarx</b> — do'konga beradigan narxingiz (1 dona). <b>Sotuv narxi</b> — do'kon mijozga sotadigan narx. Sotuv narxi kiritilmagan tovar bu do'konda sotilmaydi. Tannarx bo'sh bo'lsa, ombor kelish narxi olinadi va sizga foyda 0 bo'ladi.</div>
+      <div style="overflow-x:auto"><table class="ptable"><thead><tr><th>Tovar</th><th>Tannarx</th><th>Sotuv narxi</th></tr></thead><tbody>${prods.map(p => {
+        const q = (s.prices || []).find(x => x.pid === p.id) || {};
+        return `<tr><td title="${esc(p.name)}">${esc(p.name)}</td><td><input data-pc="${esc(p.id)}" inputmode="numeric" value="${q.cost || ""}" placeholder="${(p.noStock ? p.cost : nextCost(p.id)) ? fmt(p.noStock ? p.cost : nextCost(p.id)) : ""}" aria-label="${esc(p.name)} tannarxi"></td><td><input data-pp="${esc(p.id)}" inputmode="numeric" value="${q.price || ""}" placeholder="kiritilmagan" aria-label="${esc(p.name)} sotuv narxi"></td></tr>`;
+      }).join("")}</tbody></table></div>`;
+  }
+  const readPrices = () => [...document.querySelectorAll("[data-pp]")].map(i => ({ pid: i.dataset.pp, price: toNum(i.value), cost: toNum((document.querySelector(`[data-pc="${CSS.escape(i.dataset.pp)}"]`) || {}).value) }));
+  function pickShopSheet() {
+    const list = activeShops();
+    if (!list.length) { toast("Hali do'kon yo'q. Menu → Do'konlar bo'limida qo'shing.", true); return; }
+    openSheet(`<h3>Do'konni tanlang</h3><div>${[["all", "Barcha do'konlar"], ...list.map(s => [s.id, s.name])].map(([id, n]) => `<button type="button" class="act" data-pick="${esc(id)}" ${st.shopFilter === id ? 'aria-current="true" style="color:var(--blue);font-weight:800"' : ""}>${svg("shop")} ${esc(n)}</button>`).join("")}</div>`, sh => {
+      sh.addEventListener("click", e => { const b = e.target.closest("[data-pick]"); if (b) { closeSheet(); enterShop(b.dataset.pick); } });
+    });
+  }
+  function enterShop(id) {
+    st.shopFilter = id; ls.set("uc.shopF", id);
+    if (st.tab === "menu" || st.tab === "catalog") { st.tab = "report"; ls.set("uc.tab", st.tab); }
+    st.sub = []; render(); window.scrollTo(0, 0);
+  }
+
+  // Staff catalog: the shop's goods with price and stock; tapping one puts it into the cart.
+  function staffCatalog() {
+    const shop = shopById(st.selShop) || shopById(st.me && st.me.shopId), all = D().products.filter(p => p.active);
+    const groups = { all, on: all.filter(p => p.noStock || left(p.id) > 0), off: all.filter(p => !p.noStock && left(p.id) <= 0) };
+    const f = groups[st.catFilter] ? st.catFilter : "all";
+    const chip = (k, l) => `<button type="button" class="chip" data-cat="${k}" aria-pressed="${f === k}">${l} (${fmt(groups[k].length)})</button>`;
+    const q = st.catQ.trim().toLowerCase(), items = groups[f].filter(p => !q || p.name.toLowerCase().includes(q));
+    return `<div class="chips">${chip("all", "Barchasi")}${chip("on", "Mavjud")}${chip("off", "Tugagan")}</div>
+      <label class="searchbig">${svg("search")}<input id="catQ" placeholder="Tovar qidirish" value="${esc(st.catQ)}" autocomplete="off"></label>
+      <div class="list">${items.length ? items.map(p => { const n = left(p.id), pr = shopPrice(shop, p);
+        return `<button type="button" class="item" data-act="sellOpen" data-id="${esc(p.id)}" ${p.noStock || n > 0 ? "" : "disabled"}><div class="thumb uc">${esc(thumbTxt(p))}</div><div class="body"><div class="name">${esc(p.name)}</div><div class="price num">${pr ? fmt(pr) + " UZS" : '<span class="muted">narx kiritilmagan</span>'}</div><div class="meta">${p.noStock ? "buyurtma bo'yicha" : n > 0 ? fmt(n) + " dona" : '<span class="out">tugagan</span>'}${inCart(p.id) ? ` · <span class="inCart">savatda ${fmt(inCart(p.id))}</span>` : ""}</div></div></button>`; }).join("") : `<div class="empty">Hech narsa topilmadi.</div>`}</div>`;
+  }
+  SCREENS.catalog = () => {
+    if (!isAdmin()) return staffCatalog();
+    const low = D().cfg.lowStock, all = D().products;
+    const groups = { all: all, on: all.filter(p => p.active), off: all.filter(p => !p.active), low: all.filter(p => p.active && !p.noStock && left(p.id) < low) };
+    const chip = (k, l) => `<button type="button" class="chip" data-cat="${k}" aria-pressed="${st.catFilter === k}">${l} (${fmt(groups[k].length)})</button>`;
+    const q = st.catQ.trim().toLowerCase();
+    const items = groups[st.catFilter].filter(p => !q || p.name.toLowerCase().includes(q));
+    return `<div class="chips">${chip("all", "Barchasi")}${chip("on", "Faol")}${chip("off", "Faol emas")}${chip("low", "Kam qolgan")}</div>
+      <div class="searchrow"><label class="search">${svg("search")}<input id="catQ" placeholder="Tovar qidirish" value="${esc(st.catQ)}" autocomplete="off"></label>
+      <button type="button" class="addbtn" data-act="newProduct" aria-label="Tovar qo'shish">${svg("plus", 2.4)}</button></div>
+      <div class="list">${items.length ? items.map(catRow).join("") : `<div class="empty">${all.length ? "Hech narsa topilmadi." : "Hali tovar yo'q. «+» tugmasi bilan birinchi tovarni qo'shing."}</div>`}</div>`;
+  };
+  SCREENS.catalog.after = () => liveSearch("catQ", "catQ");
+  function catRow(p) {
+    if (p.noStock) return `<div class="item"><div class="thumb uc">${esc(thumbTxt(p))}</div>
+      <div class="body"><div class="name">${esc(p.name)}${p.active ? "" : '<span class="badge">faol emas</span>'}</div>
+      <div class="meta"><span class="badge" style="margin-left:0">omborsiz</span> kelish: <b>${p.cost ? fmt(p.cost) : "kiritilmagan"}</b></div></div>
+      <button type="button" class="dots" data-act="prodMenu" data-id="${esc(p.id)}" aria-label="Amallar">${svg("dots")}</button></div>`;
+    const n = left(p.id), low = D().cfg.lowStock, cls = n <= 0 ? "out" : n < low ? "low" : "";
+    return `<div class="item"><div class="thumb uc">${esc(thumbTxt(p))}</div>
+      <div class="body"><div class="name">${esc(p.name)}${p.active ? "" : '<span class="badge">faol emas</span>'}</div>
+      <div class="meta"><b class="${cls}">${fmt(n)}</b> dona</div>${lots(p.id).length ? `<div class="meta lots">kelish: ${lotsTxt(p.id)}</div>` : ""}</div>
+      <button type="button" class="dots" data-act="prodMenu" data-id="${esc(p.id)}" aria-label="Amallar">${svg("dots")}</button></div>`;
+  }
+
+  // Sotuv: the cart. Goods are found by search or picked from the list sheet; nothing is listed by default.
+  SCREENS.sell = () => {
+    const shops = activeShops(), locked = !isAdmin() && st.me && st.me.shopId;
+    if (st.selShop && !shops.some(s => s.id === st.selShop)) st.selShop = null;
+    if (!st.selShop && shops.length === 1) st.selShop = shops[0].id;
+    if (locked) st.selShop = st.me.shopId;
+    const shop = shopById(st.selShop);
+    if (!shops.length) return `<div class="warnbox">Hali do'kon qo'shilmagan. Admin bilan bog'laning.</div>`;
+    let out = locked ? "" : `<div class="chips">${shops.map(s => `<button type="button" class="chip" data-shop="${esc(s.id)}" aria-pressed="${st.selShop === s.id}">${esc(s.name)}</button>`).join("")}</div>`;
+    if (!shop) return out + `<div class="warnbox">Do'konni tanlang.</div>`;
+    out += `<label class="searchbig">${svg("search")}<input id="sellQ" placeholder="Tovar nomi bo'yicha qidirish" value="${esc(st.sellQ)}" autocomplete="off"><button type="button" class="tool" data-act="pickList" aria-label="Tovarlar ro'yxati">${svg("list", 2.6)}</button></label>`;
+    const q = st.sellQ.trim().toLowerCase();
+    if (q) {
+      const prods = D().products.filter(p => p.active && p.name.toLowerCase().includes(q));
+      out += `<div class="list">${prods.length ? prods.map(p => { const n = left(p.id), pr = shopPrice(shop, p);
+        return `<button type="button" class="item" data-act="sellOpen" data-id="${esc(p.id)}" ${p.noStock || n > 0 ? "" : "disabled"}><div class="thumb uc">${esc(thumbTxt(p))}</div><div class="body"><div class="name">${esc(p.name)}</div><div class="price num">${pr ? fmt(pr) + " UZS" : '<span class="muted">narxni yozasiz</span>'}</div><div class="meta">${p.noStock ? "buyurtma bo'yicha" : n > 0 ? fmt(n) + " dona" : '<span class="out">tugagan</span>'}</div></div></button>`; }).join("") : `<div class="empty">Topilmadi.</div>`}</div>`;
+    }
+    if (!st.cart.length) {
+      if (!q) out += `<div class="emptybig"><div class="bars">${[3, 1, 4, 1, 2, 5, 1, 3, 2, 1, 4, 2, 1, 3, 1, 2, 4, 1, 3, 2].map(w => `<i style="width:${w * 2}px"></i>`).join("")}</div><h3>Savatchada hech narsa yo'q</h3><p>Tovar nomini qidiring yoki ro'yxatdan tanlang</p><button type="button" class="btn primary" data-act="pickList" style="margin-top:10px;padding:0 26px">Tovarlar ro'yxati</button></div>`;
+      return out;
+    }
+    const pays = D().cfg.payments; if (!pays.includes(st.selPay)) st.selPay = pays[0] || null;
+    out += `<section class="panel"><div class="phead"><div class="tt"><h2>Savat</h2><div class="big">${money(cartTotal())}</div></div><span class="ico">${svg("cart")}</span></div>
+      ${st.cart.map((c, i) => `<div class="cline2"><div class="t"><b>${esc(c.name)}</b><button type="button" data-editc="${i}">${fmt(c.unit)} UZS ✎</button></div><div class="qty"><button type="button" data-q="${i}" data-d="-1" aria-label="Kamaytirish">−</button><b class="num">${fmt(c.n)}</b><button type="button" data-q="${i}" data-d="1" aria-label="Ko'paytirish">+</button></div><button type="button" class="x" data-rm="${i}" aria-label="Olib tashlash">×</button></div>`).join("")}
+      <div class="prow strong"><span class="k">Jami · ${fmt(sum(st.cart, c => c.n))} dona</span><span class="v">${money(cartTotal())}</span></div></section>
+      <section class="panel"><div class="phead"><div class="tt"><h2>To'lov usuli</h2></div><span class="ico">${svg("cash")}</span></div><div style="padding:0 20px 20px"><div class="paygrid" id="sPays">${pays.map(x => `<button type="button" class="chip" data-p="${esc(x)}" aria-pressed="${x === st.selPay}">${esc(x)}</button>`).join("")}</div></div></section>
+      <button type="button" class="btn" data-act="clearCart" style="background:none;color:var(--red)">Savatni tozalash</button>`;
+    return out;
+  };
+  SCREENS.sell.after = () => liveSearch("sellQ", "sellQ");
+
+  // Transactions: receipts grouped by day, like a till journal. Tap a receipt for its lines.
+  SCREENS.tx = () => {
+    const q = st.txQ.trim().toLowerCase();
+    const list = filteredSales().filter(s => !q || [s.pname, s.shopName, s.staffName, s.pay, rcNo(s.chek || s.id)].join(" ").toLowerCase().includes(q));
+    const rc = receipts(list);
+    let out = shopFilterSel() + `<label class="searchbig">${svg("search")}<input id="txQ" placeholder="ID, tovar, sotuvchi" value="${esc(st.txQ)}" autocomplete="off"></label>`;
+    if (!rc.length) return out + `<div class="emptybig"><h3>Sotuv yo'q</h3><p>Bu davrda tranzaksiya bo'lmagan.</p></div>`;
+    const days = [...new Set(rc.map(r => dayKey(new Date(r.ts))))];
+    const showPr = isAdmin() || isPartner();
+    out += days.map(dk => {
+      const rs = rc.filter(r => dayKey(new Date(r.ts)) === dk), t = new Date(rs[0].ts);
+      return `<section class="panel"><div class="dayhead"><span>${dmy(t)}</span><span class="muted" style="font-size:16px">${fmt(sum(rs, r => sum(r.xs, s => s.price)))} UZS</span></div>${rs.map(r => {
+        const tt = new Date(r.ts), amount = sum(r.xs, s => s.price), pr = sum(r.xs, isAdmin() ? myProfit : shopProfit);
+        const who = isAdmin() ? r.xs[0].shopName : (r.xs[0].staffName || (st.me && st.me.name) || "");
+        return `<button type="button" class="tline" data-rc="${esc(r.k)}"><div class="l"><span class="id">Sotuv ${rcNo(r.k)}</span><span class="tm">${pad(tt.getHours())}:${pad(tt.getMinutes())}:${pad(tt.getSeconds())}<span class="pill">${fmt(sum(r.xs, s => s.dona || 1))} birlik</span></span></div><div class="r"><span class="amt2">${fmt(amount)} UZS</span>${showPr ? `<span class="pr" style="color:${pr < 0 ? "var(--red)" : "var(--green)"}">${pr >= 0 ? "+" : ""}${fmt(pr)}</span>` : ""}<span class="who"><i></i>${esc(who)}</span></div></button>`;
+      }).join("")}</section>`;
+    }).join("");
+    return out;
+  };
+  SCREENS.tx.after = () => liveSearch("txQ", "txQ");
+  function receiptSheet(k) {
+    const xs = D().sales.filter(s => (s.chek || s.id) === k); if (!xs.length) return;
+    const t = xs[0], admin = isAdmin(), partner = isPartner();
+    openSheet(`<h3>Sotuv ${rcNo(k)}</h3><div class="sub">${tmFull(t.ts)} · ${esc(t.shopName || "")}${t.staffName ? " · " + esc(t.staffName) : ""} · ${esc(t.pay)}</div>
+      <div>${xs.map(s => `<div class="cline"><div class="t"><b>${esc(s.pname || "—")}</b><small>${fmt(s.dona || 1)} dona × ${fmt(s.price / (s.dona || 1))}</small></div><b class="num">${fmt(s.price)}</b>${admin ? `<button type="button" class="x" data-delsale="${esc(s.id)}" aria-label="O'chirish">×</button>` : ""}</div>`).join("")}</div>
+      <div class="total"><span>Jami</span><b class="num">${fmt(sum(xs, s => s.price))} UZS</b></div>
+      ${admin ? `<div class="rows"><div class="r"><span class="k">Do'kon tannarxi</span><span class="v">${fmt(sum(xs, s => s.cost || 0))}</span></div><div class="r"><span class="k">Ombor kelish narxi</span><span class="v">${fmt(sum(xs, s => s.whCost || 0))}</span></div><div class="r"><span class="k"><b>Mening foydam</b></span><span class="v">${fmt(sum(xs, myProfit))}</span></div><div class="r"><span class="k">Do'kon foydasi</span><span class="v">${fmt(sum(xs, shopProfit))}</span></div></div>` : ""}
+      ${partner ? `<div class="rows"><div class="r"><span class="k">Tannarx</span><span class="v">${fmt(sum(xs, s => s.cost || 0))}</span></div><div class="r"><span class="k"><b>Do'kon foydasi</b></span><span class="v">${fmt(sum(xs, shopProfit))}</span></div></div>` : ""}`, sh => {
+      sh.addEventListener("click", e => { const b = e.target.closest("[data-delsale]"); if (!b) return; const s = xs.find(x => x.id === b.dataset.delsale);
+        confirmSheet("Sotuvni o'chirish", `${esc(s.pname)} · ${fmt(s.price)} UZS. Tovar omborga qaytadi.`, "O'chirish", async () => { await call("deleteSale", { id: s.id }); await load(); toast("O'chirildi"); }); });
+    });
+  }
+  function periodSheet() {
+    const opts = [["today", "Bugun"], ["yday", "Kecha"], ["week", "Oxirgi 7 kun"], ["month", "Shu oy"], ["all", "Hammasi"]];
+    openSheet(`<h3>Davr</h3><div>${opts.map(([k, l]) => `<button type="button" class="act" data-per="${k}" ${st.period === k ? 'style="color:var(--blue);font-weight:800"' : ""}>${svg("cal")} ${l}</button>`).join("")}</div>
+      <div class="field"><label for="perDay">Boshqa kun</label><input id="perDay" type="date" value="${st.period === "day" ? st.day : dayKey(new Date())}" max="${dayKey(new Date())}"></div>`, sh => {
+      sh.addEventListener("click", async e => { const b = e.target.closest("[data-per]"); if (!b) return; st.period = b.dataset.per; closeSheet(); render(); await load(); });
+      $("perDay").addEventListener("change", async () => { if (!$("perDay").value) return; st.period = "day"; st.day = $("perDay").value; closeSheet(); render(); await load(); });
+    });
+  }
+  function pickListSheet() {
+    const shop = shopById(st.selShop), prods = D().products.filter(p => p.active);
+    openSheet(`<h3>Tovarlar</h3><div>${prods.length ? prods.map(p => { const n = left(p.id), ok = p.noStock || n > 0, pr = shopPrice(shop, p);
+      return `<button type="button" class="act" data-pickp="${esc(p.id)}" ${ok ? "" : "disabled style=\"opacity:.45\""}>${svg("box")}<span style="flex:1;text-align:left">${esc(p.name)}<br><small class="muted">${pr ? fmt(pr) + " UZS · " : ""}${p.noStock ? "buyurtma bo'yicha" : n > 0 ? fmt(n) + " dona" : "tugagan"}</small></span></button>`; }).join("") : `<div class="empty">Tovar yo'q.</div>`}</div>`, sh => {
+      sh.addEventListener("click", e => { const b = e.target.closest("[data-pickp]"); if (!b || b.disabled) return; const p = prodById(b.dataset.pickp); if (p) sellSheet(p); });
+    });
+  }
+  async function checkout() {
+    const shop = shopById(st.selShop);
+    if (!shop || !st.cart.length || st.saving) return;
+    st.saving = true; $("payBar").disabled = true; $("payBar").textContent = "Saqlanmoqda…";
+    try {
+      const r = await call("addSale", { shopId: shop.id, pay: st.selPay, items: st.cart.map(c => ({ pid: c.pid, count: c.n, unit: c.unit })) });
+      st.cart = []; toast(`Sotildi: ${r.name} · ${fmt(r.total)} · ${r.pay}`); await load();
+    } catch (e) { toast(e.message, true); }
+    st.saving = false; $("payBar").disabled = false; render();
+  }
+
+  SCREENS.menu = () => {
+    const mi = (v, ic, t, s) => `<button type="button" class="mitem" data-sub="${v}"><span class="ic">${svg(ic)}</span><span class="t">${t}${s ? `<small>${s}</small>` : ""}</span><span class="chev">${svg("chev")}</span></button>`;
+    const myShop = st.me && st.me.shopId && shopById(st.me.shopId);
+    return (isAdmin() ? `<div class="list"><button type="button" class="mitem" data-act="pickShop"><span class="ic">${svg("shop")}</span><span class="t">Do'kon almashtirish<small>Hozir: ${esc(curShop() ? curShop().name : "barcha do'konlar")}</small></span><span class="chev">${svg("chev")}</span></button></div><div class="list">${mi("shops", "shop", "Do'konlar", activeShops().length + " ta faol do'kon · narxlar, havolalar")}${mi("staff", "users", "Hodimlar", D().staff.filter(h => h.active).length + " ta faol hodim · login va parollar")}${mi("kirim", "box", "Kirimlar tarixi", "Omborga kelgan tovarlar")}${mi("settings", "gear", "Sozlamalar", "To'lov usullari, kam qoldiq chegarasi")}${mi("password", "key", "Admin paroli", "Parolni o'zgartirish")}</div>`
+      : `<div class="card"><h2>${esc(st.me ? st.me.name : "")}</h2><div class="hint">${myShop ? "Do'kon: " + esc(myShop.name) : "Barcha do'konlar"}</div></div>`)
+      + `<div class="list"><button type="button" class="mitem danger" data-act="logout"><span class="ic">${svg("out")}</span><span class="t">Chiqish</span></button></div>`;
+  };
+
+  // ---------- menu sub-screens
+  const SUB = {};
+  SUB.shops = () => {
+    const list = activeShops();
+    return `<button type="button" class="btn primary" data-act="newShop">+ Do'kon qo'shish</button>
+      <div class="list">${list.length ? list.map(s => `<button type="button" class="mitem" data-sub="shop" data-id="${esc(s.id)}"><span class="ic">${svg("shop")}</span><span class="t">${esc(s.name)}<small>${D().staff.filter(h => h.active && h.shopId === s.id).length} ta hodim</small></span><span class="chev">${svg("chev")}</span></button>`).join("") : `<div class="empty">Hali do'kon yo'q.</div>`}</div>`;
+  };
+  SUB.shop = sub => {
+    const s = sub.id === "new" ? { id: "new", name: "", prices: [] } : shopById(sub.id);
+    if (!s) return `<div class="empty">Do'kon topilmadi.</div>`;
+    const url = s.id !== "new" ? location.origin + location.pathname + "?d=" + encodeURIComponent(s.id) : "";
+    return `<div class="card"><div class="field"><label for="shName">Do'kon nomi</label><input id="shName" value="${esc(s.name)}"></div>
+      ${url ? `<div class="field"><label for="shLink">Shu do'kon hodimlari uchun havola</label><div class="inrow"><input id="shLink" value="${esc(url)}" readonly><button type="button" class="btn small" data-act="copyLink">Nusxalash</button></div></div>` : ""}</div>
+      <div class="card"><h2>Shu do'kon narxlari</h2>${priceTable(s)}</div>
+      <div class="btnrow">${s.id !== "new" ? `<button type="button" class="btn danger" data-act="archShop" data-id="${esc(s.id)}">Yopish</button>` : ""}<button type="button" class="btn primary" data-act="saveShop" data-id="${esc(s.id)}">Saqlash</button></div>`;
+  };
+  SUB.staff = () => {
+    const list = [...D().staff].sort((a, b) => (b.active - a.active) || (a.created - b.created));
+    const t = D().monthByStaff;
+    return `<button type="button" class="btn primary" data-act="newPerson">+ Hodim qo'shish</button>
+      <div class="list">${list.length ? list.map(h => `<button type="button" class="mitem" data-sub="person" data-id="${esc(h.id)}"><span class="ic">${svg("users")}</span><span class="t">${esc(h.name)}${h.partner ? '<span class="badge">hamkor</span>' : ""}${h.active ? "" : '<span class="badge red">nofaol</span>'}<small>${esc(h.login)} · ${h.shopId && shopById(h.shopId) ? esc(shopById(h.shopId).name) : "barcha do'konlar"} · oy: ${(t[h.id] || {}).mN || 0} ta</small></span><span class="chev">${svg("chev")}</span></button>`).join("") : `<div class="empty">Hali hodim yo'q.</div>`}</div>`;
+  };
+  SUB.person = sub => {
+    const h = sub.id === "new" ? { id: "new", name: "", phone: "", shopId: "", login: "", hasPassword: false, active: true } : staffById(sub.id);
+    if (!h) return `<div class="empty">Hodim topilmadi.</div>`;
+    const t = D().monthByStaff[h.id] || { dN: 0, dSum: 0, mN: 0, mSum: 0 };
+    return `<div class="card">
+      <div class="field"><label for="pName">Ism</label><input id="pName" value="${esc(h.name)}" autocomplete="off"></div>
+      <div class="field"><label for="pPhone">Telefon / Telegram</label><input id="pPhone" value="${esc(h.phone)}" autocomplete="off"></div>
+      <div class="field"><label for="pShop">Do'koni</label><select id="pShop">${[`<option value="">Barcha do'konlar</option>`, ...activeShops().map(s => `<option value="${esc(s.id)}" ${s.id === h.shopId ? "selected" : ""}>${esc(s.name)}</option>`)].join("")}</select></div>
+      <div class="field"><label for="pLogin">Login</label><input id="pLogin" value="${esc(h.login)}" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="masalan: ali"></div>
+      <div class="field"><label for="pPass">${h.hasPassword ? "Yangi parol (o'zgartirmaslik uchun bo'sh)" : "Parol"}</label><div class="inrow"><input id="pPass" autocomplete="new-password" spellcheck="false"><button type="button" class="btn small" data-act="genPass">Yaratish</button></div></div>
+      <label class="toggle" for="pPartner">Hamkor (do'kon egasi) <input type="checkbox" id="pPartner" ${h.partner ? "checked" : ""}></label>
+      <div class="hint">Hamkor o'z do'konidagi barcha sotuvlarni, vaqtini, sotuvchini, do'kon tannarxini va do'kon foydasini ko'radi. Ombor kelish narxi va sizning foydangiz unga ko'rinmaydi.</div>
+      <label class="toggle" for="pActive">Faol <input type="checkbox" id="pActive" ${h.active ? "checked" : ""}></label>
+      ${h.id !== "new" ? `<div class="hint">${h.lastLogin ? "Oxirgi kirish: " + tmFull(h.lastLogin) : "Hali kirmagan"} · Bugun ${t.dN} ta (${fmt(t.dSum)}) · Oy ${t.mN} ta (${fmt(t.mSum)})</div>` : ""}
+      </div>
+      <div class="btnrow">${h.id !== "new" ? `<button type="button" class="btn danger" data-act="delPerson" data-id="${esc(h.id)}">O'chirish</button>` : ""}<button type="button" class="btn primary" data-act="savePerson" data-id="${esc(h.id)}">Saqlash</button></div>
+      <div class="msg" id="pMsg"></div>`;
+  };
+  SUB.kirim = () => {
+    const list = D().kirim;
+    return `<button type="button" class="btn primary" data-act="kirimOpen">+ Kirim qo'shish</button>
+      <div class="list">${list.length ? list.map(k => `<div class="item"><div class="body"><div class="name" style="font-size:15px">${k.pid ? `+${fmt(k.dona)} dona · ${esc(k.pname || "—")}` : `+${fmt(k.uc)} UC <span class="badge">eski, hisobga olinmaydi</span>`}</div>
+        <div class="meta">${tm(k.ts)}${k.note ? " · " + esc(k.note) : ""}${k.pid && k.dona ? " · 1 dona = " + fmt(k.sum / k.dona) + " · qoldi " + fmt(k.left || 0) + " dona" : ""}</div></div>
+        <div class="amt num">${fmt(k.sum)}</div><button type="button" class="dots" data-act="kirimMenu" data-id="${esc(k.id)}" aria-label="Amallar">${svg("dots")}</button></div>`).join("") : `<div class="empty">Hali kirim yo'q.</div>`}</div>`;
+  };
+  SUB.settings = () => {
+    const c = D().cfg;
+    return `<div class="card"><div class="field"><label for="cPays">To'lov usullari (vergul bilan)</label><input id="cPays" value="${esc(c.payments.join(", "))}"></div>
+      <div class="field"><label for="cLow">Kam qoldiq chegarasi, dona</label><input id="cLow" inputmode="numeric" value="${c.lowStock}"></div>
+      <button type="button" class="btn primary" data-act="saveCfg">Saqlash</button></div>`;
+  };
+  SUB.password = () => `<div class="card"><div class="field"><label for="apOld">Joriy parol</label><input id="apOld" type="password" autocomplete="current-password"></div>
+    <div class="field"><label for="apNew">Yangi parol (kamida 6 belgi)</label><input id="apNew" type="password" autocomplete="new-password"></div>
+    <button type="button" class="btn primary" data-act="savePw">Parolni o'zgartirish</button><div class="hint">O'zgartirgach, boshqa qurilmalardagi admin kirishlari yopiladi.</div></div>`;
+
+  // ---------- bottom sheets
+  function openSheet(html, after) {
+    const sh = $("sheet");
+    sh.innerHTML = `<div class="grab"></div>` + html; sh.hidden = false; $("scrim").hidden = false;
+    if (after) after(sh);
+  }
+  function closeSheet() { $("sheet").hidden = true; $("scrim").hidden = true; $("sheet").innerHTML = ""; }
+  $("scrim").addEventListener("click", closeSheet);
+
+  // New product: either received into the warehouse (pieces + price of the batch), or "omborsiz" —
+  // never received, only sold, with today's purchase price that the admin updates when it changes.
+  function productSheet(p) {
+    const isNew = !p;
+    p = p || { id: "", name: "", uc: "", price: "", active: true, noStock: false, cost: 0 };
+    openSheet(`<h3>${isNew ? "Yangi tovar" : p.noStock ? "Omborsiz tovar" : "Tovarni tahrirlash"}</h3>
+      <div class="field"><label for="prName">Tovar (paket) nomi</label><input id="prName" value="${esc(p.name)}" placeholder="masalan QR3850 yoki 660web" autocomplete="off"></div>
+      ${isNew ? `<label class="toggle" for="prNoStock">Omborsiz tovar <small class="muted">kelmaydi, faqat sotiladi</small><input type="checkbox" id="prNoStock"></label>
+      <div class="grid2"><div class="field" id="prDonaF"><label for="prDona">Nechta dona keldi <span class="muted">(ixtiyoriy)</span></label><input id="prDona" inputmode="numeric" placeholder="50"></div>
+      <div class="field"><label for="prCost" id="prCostL">1 dona kelish narxi <span class="muted">(ixtiyoriy)</span></label><input id="prCost" inputmode="numeric" placeholder="500 000"></div></div>` : ""}
+      ${!isNew && p.noStock ? `<div class="field"><label for="prCost">Bugungi kelish narxi (1 dona), UZS</label><input id="prCost" inputmode="numeric" value="${p.cost || ""}" placeholder="489 000"></div><div class="hint">Yangi narx bundan keyingi sotuvlarga qo'llanadi. Oldingi sotuvlar o'z kunidagi narxda qoladi.</div>` : ""}
+      ${isNew ? `<div class="hint" id="prHint"></div>` : `<label class="toggle" for="prActive">Faol (sotuvda chiqadi) <input type="checkbox" id="prActive" ${p.active ? "checked" : ""}></label>${p.noStock ? "" : `<div class="hint">Qoldiq qo'shish uchun ⋯ → Kirim qo'shish.</div>`}`}
+      <button type="button" class="btn primary" id="prSave">Saqlash</button><div class="msg" id="prMsg"></div>`, () => {
+      const noStock = () => isNew ? $("prNoStock").checked : p.noStock;
+      $("prSave").addEventListener("click", async () => {
+        const m = $("prMsg"); m.className = "msg"; m.textContent = "Saqlanmoqda…"; $("prSave").disabled = true;
+        try {
+          await call("saveProduct", { id: p.id, name: $("prName").value, uc: p.uc || 0, price: p.price || 0, active: isNew ? true : $("prActive").checked,
+            noStock: noStock(), dona: isNew && !noStock() ? $("prDona").value : 0, cost: $("prCost") ? $("prCost").value : undefined });
+          closeSheet(); await load(); toast(isNew ? "Tovar qo'shildi" : "Saqlandi");
+        } catch (e) { m.className = "msg err"; m.textContent = e.message; $("prSave").disabled = false; }
+      });
+      if (isNew) {
+        const hint = () => {
+          const ns = noStock(), d = Math.floor(toNum($("prDona").value)), c = toNum($("prCost").value);
+          $("prDonaF").hidden = ns;
+          $("prCostL").innerHTML = ns ? "Bugungi kelish narxi (1 dona)" : `1 dona kelish narxi <span class="muted">(ixtiyoriy)</span>`;
+          $("prHint").textContent = ns ? "Omborga kirim qilinmaydi va qoldiq hisoblanmaydi. Kelish narxi o'zgarsa: ⋯ → Kelish narxi yoki nomini o'zgartirish."
+            : d > 0 && c > 0 ? `Jami kelish: ${fmt(d * c)} UZS` : d > 0 ? "1 dona kelish narxini ham yozing." : "Donani bo'sh qoldirsangiz, tovar 0 dona bilan qo'shiladi. Keyin ⋯ → Kirim qo'shish.";
+        };
+        ["prDona", "prCost"].forEach(id => $(id).addEventListener("input", hint)); $("prNoStock").addEventListener("change", hint); hint();
+      }
+    });
+  }
+  // All receipts of one product, newest first; tap one to fix its price or piece count.
+  function kirimListSheet(p) {
+    const ks = D().kirim.filter(k => k.pid === p.id).sort((a, b) => b.ts - a.ts);
+    if (!ks.length) { toast("Bu tovarga hali kirim qilinmagan. ⋯ → Kirim qo'shish.", true); return; }
+    openSheet(`<h3>${esc(p.name)} · kirimlar</h3><div class="sub">Xato kiritilgan kirimni tanlang</div><div>${ks.map(k => `<button type="button" class="act" data-k="${esc(k.id)}">${svg("box")}<span style="flex:1;text-align:left">+${fmt(k.dona)} dona × ${fmt(Math.round(k.sum / k.dona))}<br><small class="muted">${tm(k.ts)}${k.note ? " · " + esc(k.note) : ""} · qoldi ${fmt(k.left || 0)}</small></span>${svg("edit")}</button>`).join("")}</div>`, sh => {
+      sh.addEventListener("click", e => { const b = e.target.closest("[data-k]"); if (b) kirimEditSheet(ks.find(k => k.id === b.dataset.k)); });
+    });
+  }
+  // Fix a receipt's piece count or purchase price. Profit of sales already taken from it is recounted.
+  function kirimEditSheet(k) {
+    openSheet(`<h3>${esc(k.pname || "Kirim")}</h3><div class="sub">${tm(k.ts)}</div>
+      <div class="grid2"><div class="field"><label for="keDona">Nechta dona</label><input id="keDona" inputmode="numeric" value="${k.dona}"></div>
+      <div class="field"><label for="keUnit">1 dona kelish narxi, UZS</label><input id="keUnit" inputmode="numeric" value="${Math.round(k.sum / k.dona)}"></div></div>
+      <div class="field"><label for="keNote">Kimdan / izoh</label><input id="keNote" value="${esc(k.note || "")}" autocomplete="off"></div>
+      <div class="hint">Shu partiyadan sotilgan tovarlar foydasi yangi narx bo'yicha qayta hisoblanadi.</div>
+      <button type="button" class="btn primary" id="keSave">Saqlash</button><div class="msg" id="keMsg"></div>`, () => {
+      $("keSave").addEventListener("click", async () => {
+        const m = $("keMsg"); m.className = "msg"; m.textContent = "Saqlanmoqda…"; $("keSave").disabled = true;
+        try { await call("updateKirim", { id: k.id, dona: Math.floor(toNum($("keDona").value)), unit: toNum($("keUnit").value), note: $("keNote").value }); closeSheet(); await load(); toast("Kirim o'zgartirildi"); }
+        catch (e) { m.className = "msg err"; m.textContent = e.message; $("keSave").disabled = false; }
+      });
+    });
+  }
+  // Add one product to the cart: count and the real price of 1 piece (shop price pre-filled).
+  function sellSheet(p, editIdx) {
+    if (!st.selShop && st.me && st.me.shopId) st.selShop = st.me.shopId;
+    const shop = shopById(st.selShop); if (!shop) { toast("Do'konni tanlang.", true); return; }
+    const line = editIdx !== undefined ? st.cart[editIdx] : null;
+    const base = shopPrice(shop, p), max = p.noStock ? 100000 : left(p.id) - inCart(p.id) + (line ? line.n : 0);
+    if (max <= 0) { toast("Bu tovarning hammasi savatda.", true); return; }
+    let n = line ? line.n : 1;
+    const unit = () => toNum($("sUnit").value);
+    const draw = () => {
+      $("sN").value = n; $("sTotal").textContent = fmt(unit() * n);
+      $("sMinus").disabled = n <= 1; $("sPlus").disabled = n >= max;
+      const u = unit(); $("sDiff").textContent = base && u && u !== base ? `Do'kon narxi ${fmt(base)} · farq ${u > base ? "+" : ""}${fmt(u - base)} har donada` : "";
+    };
+    openSheet(`<h3>${esc(p.name)}</h3><div class="sub">${p.noStock ? "buyurtma bo'yicha" : "omborda " + fmt(left(p.id)) + " dona"}${inCart(p.id) ? " · savatda " + fmt(inCart(p.id)) : ""} · ${esc(shop.name)}</div>
+      <div class="grid2"><div class="field"><label for="sN">Nechta dona</label><div class="stepper" style="margin:0"><button type="button" id="sMinus" aria-label="Kamaytirish">−</button><input id="sN" class="num" inputmode="numeric" value="1" style="width:70px;text-align:center;font-weight:800;font-size:20px;border:0;background:none"><button type="button" id="sPlus" aria-label="Ko'paytirish">+</button></div></div>
+      <div class="field"><label for="sUnit">1 dona narxi, UZS</label><input id="sUnit" inputmode="numeric" value="${(line ? line.unit : base) || ""}" placeholder="narxni yozing"></div></div>
+      <div class="hint" id="sDiff"></div>
+      <div class="total"><span>Jami</span><b><span id="sTotal" class="num"></span> UZS</b></div>
+      <button type="button" class="btn primary" id="sAdd" style="height:56px;font-size:17px">${line ? "Saqlash" : "Savatga qo'shish"}</button><div class="msg" id="sMsg"></div>`, () => {
+      $("sMinus").addEventListener("click", () => { if (n > 1) { n--; draw(); } });
+      $("sPlus").addEventListener("click", () => { if (n < max) { n++; draw(); } });
+      $("sN").addEventListener("input", () => { n = Math.max(1, Math.min(max, Math.floor(toNum($("sN").value)) || 1)); $("sTotal").textContent = fmt(unit() * n); $("sMinus").disabled = n <= 1; $("sPlus").disabled = n >= max; });
+      $("sN").addEventListener("change", draw);
+      $("sUnit").addEventListener("input", draw);
+      const add = () => {
+        if (!(unit() > 0)) { const m = $("sMsg"); m.className = "msg err"; m.textContent = "1 dona narxini yozing."; return false; }
+        if (line) { line.n = n; line.unit = unit(); return true; }
+        const same = st.cart.find(c => c.pid === p.id && c.unit === unit());
+        if (same) same.n += n; else st.cart.push({ pid: p.id, name: p.name, n, unit: unit() });
+        return true;
+      };
+      $("sAdd").addEventListener("click", () => { if (add()) { closeSheet(); st.sellQ = ""; render(); if (!line) toast(`Savatga: ${p.name} × ${n}`); } });
+      draw();
+    });
+  }
+  function confirmSheet(title, text, btn, fn) {
+    openSheet(`<h3>${title}</h3><div class="sub" style="margin-top:0">${text}</div><div class="btnrow"><button type="button" class="btn" id="cNo">Bekor qilish</button><button type="button" class="btn danger" id="cYes">${btn}</button></div>`, () => {
+      $("cNo").addEventListener("click", closeSheet);
+      $("cYes").addEventListener("click", async () => { $("cYes").disabled = true; try { await fn(); closeSheet(); } catch (e) { toast(e.message, true); $("cYes").disabled = false; } });
+    });
+  }
+
+  // ---------- events
+  $("navIn").addEventListener("click", e => { const b = e.target.closest("button[data-tab]"); if (!b) return; st.tab = b.dataset.tab; st.sub = []; ls.set("uc.tab", st.tab); render(); window.scrollTo(0, 0); });
+  $("backBtn").addEventListener("click", () => { st.sub.pop(); render(); });
+  $("refreshBtn").addEventListener("click", load);
+  $("datePill").addEventListener("click", periodSheet);
+  $("payBar").addEventListener("click", checkout);
+  $("avatar").addEventListener("click", () => { if (isAdmin()) pickShopSheet(); else { st.tab = "menu"; st.sub = []; render(); } });
+  $("fab").addEventListener("click", () => { st.tab = "sell"; st.sub = []; ls.set("uc.tab", st.tab); render(); window.scrollTo(0, 0); setTimeout(() => { const i = $("sellQ"); if (i) i.focus(); }, 50); });
+
+
+  $("screen").addEventListener("click", async e => {
+    const per = e.target.closest("[data-period]"); if (per) { st.period = per.dataset.period; render(); await load(); return; }
+    const cyc = e.target.closest("[data-cycle]"); if (cyc) { const k = cyc.dataset.cycle, order = k === "topBy" ? ["sum", "dona", "profit"] : ["sum", "n"];
+      let i = order.indexOf(st[k] || "sum"); do { i = (i + 1) % order.length; } while (order[i] === "profit" && !isAdmin() && !isPartner()); st[k] = order[i]; render(); return; }
+    const rcb = e.target.closest("[data-rc]"); if (rcb) { receiptSheet(rcb.dataset.rc); return; }
+    const qb = e.target.closest("[data-q]"); if (qb) { const c = st.cart[+qb.dataset.q], p = prodById(c.pid), mx = p && !p.noStock ? left(p.id) - inCart(p.id) + c.n : 1e5; c.n = Math.max(1, Math.min(mx, c.n + Number(qb.dataset.d))); render(); return; }
+    const rm = e.target.closest("[data-rm]"); if (rm) { st.cart.splice(+rm.dataset.rm, 1); render(); return; }
+    const ec = e.target.closest("[data-editc]"); if (ec) { const i = +ec.dataset.editc, p = prodById(st.cart[i].pid); if (p) sellSheet(p, i); return; }
+    const pay = e.target.closest("#sPays .chip"); if (pay) { st.selPay = pay.dataset.p; ls.set("uc.pay", st.selPay); document.querySelectorAll("#sPays .chip").forEach(x => x.setAttribute("aria-pressed", x.dataset.p === st.selPay)); return; }
+    const cat = e.target.closest("[data-cat]"); if (cat) { st.catFilter = cat.dataset.cat; render(); return; }
+    const sh = e.target.closest("[data-shop]"); if (sh) { st.selShop = sh.dataset.shop; ls.set("uc.shop", st.selShop); render(); return; }
+    const pk = e.target.closest("[data-pick]"); if (pk) { enterShop(pk.dataset.pick); return; }
+    const sub = e.target.closest("[data-sub]"); if (sub) { st.sub.push({ v: sub.dataset.sub, id: sub.dataset.id }); render(); window.scrollTo(0, 0); return; }
+    const b = e.target.closest("[data-act]"); if (!b) return;
+    const act = b.dataset.act, id = b.dataset.id;
+    try {
+      if (act === "newProduct") productSheet(null);
+      if (act === "prodMenu") {
+        const p = prodById(id);
+        openSheet(`<h3>${esc(p.name)}</h3><div>
+          ${p.noStock ? `<button type="button" class="act" id="aEdit">${svg("edit")} Kelish narxi yoki nomini o'zgartirish</button>` : `<button type="button" class="act" id="aKirim">${svg("box")} Kirim qo'shish</button>
+          <button type="button" class="act" id="aLots">${svg("doc")} Kelish narxini to'g'rilash</button>
+          <button type="button" class="act" id="aEdit">${svg("edit")} Nomini o'zgartirish</button>`}
+          <button type="button" class="act danger" id="aDel">${svg("trash")} O'chirish</button></div>`, () => {
+          if ($("aKirim")) $("aKirim").addEventListener("click", () => kirimSheet(p.id));
+          $("aEdit").addEventListener("click", () => productSheet(p));
+          if ($("aLots")) $("aLots").addEventListener("click", () => kirimListSheet(p));
+          $("aDel").addEventListener("click", () => confirmSheet("Tovarni o'chirish", "Sotuv yoki kirim tarixi bo'lsa, tovar o'chirilmaydi: «faol emas» bo'ladi va tarix saqlanadi.", "O'chirish", async () => {
+            const r = await call("deleteProduct", { id: p.id }); await load(); toast(r.archived ? "Tovar sotuvdan olindi" : "Tovar o'chirildi");
+          }));
+        });
+      }
+      if (act === "sellOpen") { const p = prodById(id); if (p) sellSheet(p); }
+      if (act === "pickList") pickListSheet();
+      if (act === "clearCart") confirmSheet("Savatni tozalash", "Savatdagi hamma tovarlar olib tashlanadi.", "Tozalash", async () => { st.cart = []; render(); });
+      if (act === "txMenu") {
+        const s = D().sales.find(x => x.id === id);
+        confirmSheet("Sotuvni o'chirish", `${esc(s.pname)}${s.dona > 1 ? " × " + s.dona : ""} · ${fmt(s.price)} UZS · ${tm(s.ts)}. Tovar omborga qaytadi.`, "O'chirish", async () => { await call("deleteSale", { id }); await load(); toast("Sotuv o'chirildi"); });
+      }
+      if (act === "logout") { call("logout").catch(() => {}); toLogin(""); }
+      if (act === "newShop") { st.sub.push({ v: "shop", id: "new" }); render(); }
+      if (act === "copyLink") { const i = $("shLink"); i.select(); try { await navigator.clipboard.writeText(i.value); toast("Havola nusxalandi"); } catch (_) { try { document.execCommand("copy"); toast("Havola nusxalandi"); } catch (__) { toast("Havolani belgilab, nusxa oling"); } } }
+      if (act === "pickShop") pickShopSheet();
+      if (act === "saveShopPrices") { const sh = shopById(id); await call("saveShop", { id, name: sh.name, prices: readPrices() }); await load(); toast("Narxlar saqlandi"); }
+      if (act === "saveShop") {
+        const r = await call("saveShop", { id: id === "new" ? "" : id, name: $("shName").value, prices: readPrices() });
+        st.sub[st.sub.length - 1] = { v: "shop", id: r.id }; await load(); toast("Do'kon saqlandi");
+      }
+      if (act === "archShop") confirmSheet("Do'konni yopish", "Yopilgan do'kon sotuvda chiqmaydi va uning havolasi ishlamay qoladi. Tarix saqlanadi.", "Yopish", async () => { await call("archiveShop", { id }); st.sub.pop(); await load(); toast("Do'kon yopildi"); });
+      if (act === "newPerson") { st.sub.push({ v: "person", id: "new" }); render(); }
+      if (act === "genPass") { $("pPass").value = genPass(); }
+      if (act === "savePerson") {
+        const pw = $("pPass").value, login = $("pLogin").value.trim().toLowerCase();
+        const r = await call("saveStaff", { id: id === "new" ? "" : id, name: $("pName").value, phone: $("pPhone").value, shopId: $("pShop").value, login, password: pw, active: $("pActive").checked, partner: $("pPartner").checked });
+        st.sub[st.sub.length - 1] = { v: "person", id: r.id }; await load();
+        const m = $("pMsg"); if (m) { m.className = "msg ok"; m.textContent = pw ? `Saqlandi. Hodimga yuboring: login ${login}, parol ${pw}` : "Saqlandi."; }
+      }
+      if (act === "delPerson") confirmSheet("Hodimni o'chirish", "Hodim tizimga kira olmaydi. Uning sotuvlari tarixda qoladi.", "O'chirish", async () => { await call("deleteStaff", { id }); st.sub.pop(); await load(); toast("Hodim o'chirildi"); });
+      if (act === "kirimOpen") kirimSheet("");
+      if (act === "kirimMenu") {
+        const k = D().kirim.find(x => x.id === id);
+        openSheet(`<h3>Kirim</h3><div>${k && k.pid ? `<button type="button" class="act" id="kEditB">${svg("edit")} Narx yoki donani o'zgartirish</button>` : ""}
+          <button type="button" class="act danger" id="kDelB">${svg("trash")} O'chirish</button></div>`, () => {
+          if ($("kEditB")) $("kEditB").addEventListener("click", () => kirimEditSheet(k));
+          $("kDelB").addEventListener("click", () => confirmSheet("Kirimni o'chirish", "Bu kirim ombordan ayiriladi.", "O'chirish", async () => { await call("deleteKirim", { id }); await load(); toast("Kirim o'chirildi"); }));
+        });
+      }
+      if (act === "saveCfg") { await call("saveConfig", { payments: $("cPays").value.split(/[,;]+/).map(s => s.trim()), lowStock: $("cLow").value }); await load(); toast("Saqlandi"); }
+      if (act === "savePw") {
+        const r = await call("adminPassword", { old: $("apOld").value, password: $("apNew").value });
+        saveToken(r.token); $("apOld").value = ""; $("apNew").value = ""; toast("Parol o'zgardi");
+      }
+    } catch (err) {
+      const m = $("pMsg");
+      if (act === "savePerson" && m) { m.className = "msg err"; m.textContent = err.message; } else toast(err.message, true);
+    }
+  });
+
+  $("vSetup").addEventListener("submit", async e => {
+    e.preventDefault();
+    const m = $("setupMsg"), a = $("suPass").value, b = $("suPass2").value; m.className = "msg err";
+    if (a.length < 6) { m.textContent = "Parol kamida 6 belgi bo'lsin."; return; }
+    if (a !== b) { m.textContent = "Parollar bir xil emas."; return; }
+    $("setupBtn").disabled = true; m.className = "msg"; m.textContent = "Saqlanmoqda…";
+    try { const r = await call("setup", { password: a }); saveToken(r.token); await load(); }
+    catch (err) { m.className = "msg err"; m.textContent = err.message; } finally { $("setupBtn").disabled = false; }
+  });
+  $("vLogin").addEventListener("submit", async e => {
+    e.preventDefault();
+    const m = $("loginMsg"); $("loginBtn").disabled = true; m.className = "msg"; m.textContent = "Tekshirilmoqda…";
+    try {
+      const r = await call("login", { login: $("lLogin").value, password: $("lPass").value, shop: linkShop });
+      saveToken(r.token); $("lPass").value = ""; m.textContent = ""; st.tab = "home"; st.sub = [];
+      await load();
+    } catch (err) { m.className = "msg err"; m.textContent = err.message; } finally { $("loginBtn").disabled = false; }
+  });
+
+  // Refresh every minute while visible and idle (never while a sheet or a form is open).
+  setInterval(() => {
+    if (st.view !== "app" || document.visibilityState !== "visible" || st.pending > 0 || st.saving || !$("sheet").hidden) return;
+    if (st.tab === "menu" && st.sub.length) return;
+    const a = document.activeElement; if (a && (a.tagName === "INPUT" || a.tagName === "SELECT")) return;
+    load();
+  }, 60000);
+
+  // ---------- boot
+  (async () => {
+    const u = new URL(location.href), q = { d: u.searchParams.get("d") || "", k: u.searchParams.get("k") || "" };
+    linkShop = q.d;
+    if (!token && q.k) token = q.k;
+    if (token) ls.set("uc.token", token);
+    setAddress();
+    try {
+      if (token) { st.view = "app"; await load(); if (st.view === "app" && st.data) return; }
+      const b = await call("boot", { shop: linkShop });
+      linkShopName = b.shopName || "";
+      if (linkShop && !linkShopName) $("loginHint").textContent = "Bu do'kon havolasi eskirgan yoki do'kon yopilgan. Admindan yangi havola so'rang.";
+      if (linkShopName) { $("loginTitle").textContent = linkShopName; $("loginHint").textContent = "Do'kon hodimi sifatida kiring. Login va parolni admin beradi."; }
+      st.view = b.needSetup ? "setup" : "login"; render();
+    } catch (err) { st.view = "login"; render(); $("loginMsg").className = "msg err"; $("loginMsg").textContent = err.message; }
+  })();
+})();
+</script>
+</body>
+</html>
