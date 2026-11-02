@@ -1,5 +1,5 @@
 // Network first: always the newest page when online; the last copy when offline. Data requests are never cached.
-const C = "uc-savdo-v1";
+const C = "uc-savdo-v2";
 self.addEventListener("install", e => self.skipWaiting());
 self.addEventListener("activate", e => e.waitUntil(self.clients.claim()));
 self.addEventListener("fetch", e => {
