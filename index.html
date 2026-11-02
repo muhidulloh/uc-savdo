@@ -889,6 +889,27 @@ html,body{background:var(--bg)}
       }
     });
   }
+  // New receipt into the warehouse: a separate batch with its own price of 1 piece (FIFO).
+  function kirimSheet(pid) {
+    const prods = D().products.filter(p => p.active && !p.noStock);
+    if (!prods.length) { toast("Avval katalogga omborli tovar qo'shing.", true); return; }
+    openSheet(`<h3>Omborga kirim</h3>
+      <div class="field"><label for="kPid">Tovar</label><select id="kPid">${prods.map(p => `<option value="${esc(p.id)}" ${p.id === pid ? "selected" : ""}>${esc(p.name)} · qoldiq ${fmt(left(p.id))}</option>`).join("")}</select></div>
+      <div class="grid2"><div class="field"><label for="kDona">Nechta dona</label><input id="kDona" inputmode="numeric" placeholder="50"></div>
+      <div class="field"><label for="kSum">1 dona kelish narxi, UZS</label><input id="kSum" inputmode="numeric" placeholder="500 000"></div></div>
+      <div class="field"><label for="kNote">Kimdan / izoh</label><input id="kNote" autocomplete="off"></div>
+      <div class="hint" id="kHint"></div>
+      <button type="button" class="btn primary" id="kSave">Kirimni saqlash</button><div class="msg" id="kMsg"></div>`, () => {
+      const hint = () => { const d = Math.floor(toNum($("kDona").value)), s = toNum($("kSum").value); $("kHint").textContent = d > 0 && s > 0 ? `Jami: ${fmt(s * d)} UZS` : ""; };
+      $("kDona").addEventListener("input", hint); $("kSum").addEventListener("input", hint);
+      $("kSave").addEventListener("click", async () => {
+        const m = $("kMsg"); m.className = "msg"; m.textContent = "Saqlanmoqda…"; $("kSave").disabled = true;
+        const pr = prodById($("kPid").value), d = Math.floor(toNum($("kDona").value));
+        try { await call("addKirim", { pid: $("kPid").value, dona: d, sum: toNum($("kSum").value) * d, note: $("kNote").value }); closeSheet(); await load(); toast(`Omborga qo'shildi: ${pr ? pr.name : ""} × ${fmt(d)}`); }
+        catch (e) { m.className = "msg err"; m.textContent = e.message; $("kSave").disabled = false; }
+      });
+    });
+  }
   // All receipts of one product, newest first; tap one to fix its price or piece count.
   function kirimListSheet(p) {
     const ks = D().kirim.filter(k => k.pid === p.id).sort((a, b) => b.ts - a.ts);
