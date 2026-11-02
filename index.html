@@ -332,6 +332,7 @@ html,body{background:var(--bg)}
   function saveToken(t) { token = t; ls.set("uc.token", t); setAddress(); }
 
   const ICON = {
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
     home: '<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
     cart: '<path d="M3 4h2l2.4 11h11l2-8H6.2"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/>',
     sell: '<rect x="4" y="5" width="16" height="12" rx="2"/><path d="M8 9h8M8 13h5M9 21h6"/>',
@@ -385,7 +386,7 @@ html,body{background:var(--bg)}
   const periodLabel = () => ({ today: dmy(Date.now()), yday: dmy(Date.now() - 864e5), week: "Oxirgi 7 kun", month: "Shu oy", all: "Hammasi" })[st.period] || dmy(dayStartOf(st.day));
   const isAdmin = () => st.role === "admin";
   const isPartner = () => !!(st.me && st.me.partner);
-  const D = () => st.data || { cfg: { payments: [], lowStock: 5 }, products: [], shops: [], staff: [], sales: [], today: [], kirim: [], stock: { left: 0, byPid: {} }, monthByStaff: {} };
+  const D = () => st.data || { cfg: { payments: [], lowStock: 5 }, products: [], shops: [], staff: [], sales: [], today: [], kirim: [], stock: { left: 0, byPid: {} }, monthByStaff: {}, work: [] };
   const prodById = id => D().products.find(p => p.id === id);
   const shopById = id => D().shops.find(s => s.id === id);
   const staffById = id => D().staff.find(s => s.id === id);
@@ -489,6 +490,28 @@ html,body{background:var(--bg)}
   const rcNo = k => "#" + String(k).replace(/[^a-z0-9]/gi, "").slice(-8).toUpperCase();
   const money = v => `${fmt(v)} <small>UZS</small>`;
   const panel = (title, big, icon, rows, extraHead) => `<section class="panel"><div class="phead"><div class="tt"><h2>${title}</h2>${big !== null ? `<div class="big">${big}</div>` : ""}${extraHead || ""}</div><span class="ico">${svg(icon)}</span></div>${rows}</section>`;
+  // Worked time: "8 soat 25 daq".
+  const hm = ms => { const m = Math.max(0, Math.round((ms || 0) / 60000)), h = Math.floor(m / 60); return h ? `${h} soat ${pad(m % 60)} daq` : `${m} daq`; };
+  const hhmm = ts => { const t = new Date(ts); return `${pad(t.getHours())}:${pad(t.getMinutes())}`; };
+  const workOf = (staffId, fromTs) => { const k = fromTs ? dayKey(new Date(fromTs)) : ""; return (D().work || []).filter(r => r.staffId === staffId && r.day >= k); };
+  const workMs = rs => rs.reduce((a, r) => a + (r.open ? r.ms + (Date.now() - r.end) : r.ms), 0);
+  const UZDAYS = ["Ya", "Du", "Se", "Ch", "Pa", "Ju", "Sh"];
+  const workRow = r => { const d = new Date(r.day + "T12:00:00"); const end = r.open ? "hozir" : hhmm(r.end);
+    const note = r.autoStart && r.autoEnd ? "sotuvlar bo'yicha" : r.autoStart ? "boshlanishi 1-sotuvdan" : r.autoEnd ? "tugashi oxirgi sotuvdan" : r.open ? "ishlamoqda" : "tugma bilan";
+    return `<div class="prow"><span class="k" style="white-space:normal">${pad(d.getDate())}.${pad(d.getMonth() + 1)} ${UZDAYS[d.getDay()]} · ${hhmm(r.start)}–${end}<br><span class="muted" style="font-size:12px">${note}</span></span><span class="v">${hm(r.open ? r.ms + (Date.now() - r.end) : r.ms)}</span></div>`; };
+  // Staff home: "Ishni boshladim" / "Ishni tugatdim".
+  const shiftCard = () => {
+    const r = (D().work || []).find(x => x.staffId === st.me.id && x.day === dayKey(new Date()));
+    let line, btns;
+    if (r && r.open) {
+      line = `Ish davom etmoqda · ${hhmm(r.start)} dan`;
+      btns = `<button type="button" class="btn danger" data-act="shiftEnd">Ishni tugatdim</button>`;
+    } else {
+      line = r ? `Bugun: ${hhmm(r.start)}–${hhmm(r.end)}${r.autoStart || r.autoEnd ? ` <span class="muted">· sotuvlar bo'yicha</span>` : ""}` : "Ish hali boshlanmagan";
+      btns = `<button type="button" class="btn primary" data-act="shiftStart">Ishni boshladim</button>` + (r && r.autoEnd ? `<button type="button" class="btn" data-act="shiftEnd">Ishni tugatdim</button>` : "");
+    }
+    return panel("Ish vaqti", r ? hm(workMs([r])) : "0 daq", "clock", `<div class="pempty" style="padding-top:0">${line}</div><div class="btnrow">${btns}</div>`);
+  };
   const prow = (k, v, cls) => `<div class="prow ${cls || ""}"><span class="k">${k}</span><span class="v">${v}</span></div>`;
   // Sales line: hours for one day, days for longer periods. Smooth line with a soft fill.
   function chartSvg(list) {
@@ -528,6 +551,7 @@ html,body{background:var(--bg)}
     const list = filteredSales(), admin = isAdmin(), partner = isPartner(), low = D().cfg.lowStock;
     const rc = receipts(list), dona = sum(list, s => s.dona || 1);
     let out = shopFilterSel();
+    if (!admin && !partner && st.me) out += shiftCard();
     out += panel("Sotuvlar", money(sum(list, s => s.price)), "bars", chartSvg(list));
     if (admin) out += panel("Mening foydam", money(sum(list, myProfit)), "cube",
       prow("Do'konlar savdosi", money(sum(list, s => s.price))) + prow("Do'kon tannarxi", money(sum(list, s => s.cost || 0))) + prow("Ombor kelish narxi", money(sum(list, s => s.whCost || 0))) + prow("Do'konlar foydasi", money(sum(list, shopProfit))));
@@ -781,7 +805,7 @@ html,body{background:var(--bg)}
     const list = [...D().staff].sort((a, b) => (b.active - a.active) || (a.created - b.created));
     const t = D().monthByStaff;
     return `<button type="button" class="btn primary" data-act="newPerson">+ Hodim qo'shish</button>
-      <div class="list">${list.length ? list.map(h => `<button type="button" class="mitem" data-sub="person" data-id="${esc(h.id)}"><span class="ic">${svg("users")}</span><span class="t">${esc(h.name)}${h.partner ? '<span class="badge">hamkor</span>' : ""}${h.active ? "" : '<span class="badge red">nofaol</span>'}<small>${esc(h.login)} · ${h.shopId && shopById(h.shopId) ? esc(shopById(h.shopId).name) : "barcha do'konlar"} · oy: ${(t[h.id] || {}).mN || 0} ta</small></span><span class="chev">${svg("chev")}</span></button>`).join("") : `<div class="empty">Hali hodim yo'q.</div>`}</div>`;
+      <div class="list">${list.length ? list.map(h => `<button type="button" class="mitem" data-sub="person" data-id="${esc(h.id)}"><span class="ic">${svg("users")}</span><span class="t">${esc(h.name)}${h.partner ? '<span class="badge">hamkor</span>' : ""}${h.active ? "" : '<span class="badge red">nofaol</span>'}<small>${esc(h.login)} · ${h.shopId && shopById(h.shopId) ? esc(shopById(h.shopId).name) : "barcha do'konlar"} · oy: ${(t[h.id] || {}).mN || 0} ta</small>${h.partner ? "" : `<small>Bu oy ishladi: <b>${hm(workMs(workOf(h.id, startOfMonth())))}</b></small>`}</span><span class="chev">${svg("chev")}</span></button>`).join("") : `<div class="empty">Hali hodim yo'q.</div>`}</div>`;
   };
   SUB.person = sub => {
     const h = sub.id === "new" ? { id: "new", name: "", phone: "", shopId: "", login: "", hasPassword: false, active: true } : staffById(sub.id);
@@ -798,6 +822,10 @@ html,body{background:var(--bg)}
       <label class="toggle" for="pActive">Faol <input type="checkbox" id="pActive" ${h.active ? "checked" : ""}></label>
       ${h.id !== "new" ? `<div class="hint">${h.lastLogin ? "Oxirgi kirish: " + tmFull(h.lastLogin) : "Hali kirmagan"} · Bugun ${t.dN} ta (${fmt(t.dSum)}) · Oy ${t.mN} ta (${fmt(t.mSum)})</div>` : ""}
       </div>
+      ${h.id !== "new" ? (() => { const days = workOf(h.id, startOfDay() - 30 * 864e5);
+        return panel("Ish vaqti", hm(workMs(workOf(h.id, startOfMonth()))) + ` <small>bu oy</small>`, "clock",
+          prow("Bugun", hm(workMs(workOf(h.id, startOfDay())))) + prow("Oxirgi 7 kun", hm(workMs(workOf(h.id, startOfDay() - 6 * 864e5)))) + prow("Bu oy", hm(workMs(workOf(h.id, startOfMonth()))))
+          + (days.length ? `<div class="prow"><span class="k muted">Kunlar bo'yicha (30 kun)</span><span class="v plain muted">soat</span></div>` + days.map(workRow).join("") : `<div class="pempty">Hali ish vaqti yo'q.</div>`)); })() : ""}
       <div class="btnrow">${h.id !== "new" ? `<button type="button" class="btn danger" data-act="delPerson" data-id="${esc(h.id)}">O'chirish</button>` : ""}<button type="button" class="btn primary" data-act="savePerson" data-id="${esc(h.id)}">Saqlash</button></div>
       <div class="msg" id="pMsg"></div>`;
   };
@@ -976,6 +1004,8 @@ html,body{background:var(--bg)}
         const s = D().sales.find(x => x.id === id);
         confirmSheet("Sotuvni o'chirish", `${esc(s.pname)}${s.dona > 1 ? " × " + s.dona : ""} · ${fmt(s.price)} UZS · ${tm(s.ts)}. Tovar omborga qaytadi.`, "O'chirish", async () => { await call("deleteSale", { id }); await load(); toast("Sotuv o'chirildi"); });
       }
+      if (act === "shiftStart") { await call("shiftStart"); await load(); toast("Ish boshlandi"); }
+      if (act === "shiftEnd") confirmSheet("Ishni tugatish", "Bugungi ish vaqtingiz shu daqiqada tugaydi.", "Ishni tugatdim", async () => { await call("shiftEnd"); await load(); toast("Ish tugatildi"); });
       if (act === "logout") { call("logout").catch(() => {}); toLogin(""); }
       if (act === "newShop") { st.sub.push({ v: "shop", id: "new" }); render(); }
       if (act === "copyLink") { const i = $("shLink"); i.select(); try { await navigator.clipboard.writeText(i.value); toast("Havola nusxalandi"); } catch (_) { try { document.execCommand("copy"); toast("Havola nusxalandi"); } catch (__) { toast("Havolani belgilab, nusxa oling"); } } }
