@@ -316,7 +316,10 @@ html,body{background:var(--bg)}
 <script>
 (() => {
   const $ = id => document.getElementById(id);
-  const ls = { get(k) { try { return localStorage.getItem(k); } catch (_) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (_) {} }, del(k) { try { localStorage.removeItem(k); } catch (_) {} } };
+  // Each shop link (?d=<id>) keeps its own login and settings on this device, so two shops opened in one browser never mix.
+  const LINK_D = (() => { try { return new URL(location.href).searchParams.get("d") || ""; } catch (_) { return ""; } })();
+  const KEY = k => LINK_D ? k.replace(/^uc\./, "uc.d." + LINK_D + ".") : k;
+  const ls = { get(k) { try { return localStorage.getItem(KEY(k)); } catch (_) { return null; } }, set(k, v) { try { localStorage.setItem(KEY(k), v); } catch (_) {} }, del(k) { try { localStorage.removeItem(KEY(k)); } catch (_) {} } };
   // Server: the Google Apps Script web app (data stays in the Google Sheet). The page itself is hosted on GitHub Pages.
   const API_URL = "https://script.google.com/macros/s/AKfycbx63GuARpue0EBErYhtjrCGuE_Wz6oO9Hetr-89g59OTf2wHkBGIltQu-FMwFslvfq9/exec";
   let token = ls.get("uc.token"), linkShop = "", linkShopName = "";
@@ -360,7 +363,7 @@ html,body{background:var(--bg)}
 
   const st = {
     view: "boot", role: null, me: null, data: null,
-    tab: ls.get("uc.tab") || "home", sellerBy: "sum", topBy: "sum", day: "", sub: [], period: "today", shopFilter: ls.get("uc.shopF") || "all",
+    tab: ls.get("uc.tab") || "home", sellerBy: "sum", topBy: "sum", day: "", sub: [], period: "today", shopFilter: ls.get("uc.shopF") || LINK_D || "all",
     catFilter: "all", catQ: "", sellQ: "", txQ: "",
     selShop: ls.get("uc.shop"), selStaff: "admin", selPay: ls.get("uc.pay"), pending: 0, saving: false,
   };
@@ -1039,6 +1042,19 @@ html,body{background:var(--bg)}
     load();
   }, 60000);
 
+  // A shop link added to the home screen becomes its own app: own name, and it always opens this shop's link.
+  function shopManifest(name) {
+    if (!LINK_D) return;
+    const here = location.origin + location.pathname, start = here + "?d=" + encodeURIComponent(LINK_D), base = new URL(".", here).href;
+    const m = { name: "UC · " + name, short_name: name.slice(0, 12), id: start, start_url: start, scope: base, display: "standalone",
+      background_color: "#f1f2f4", theme_color: "#ffffff", lang: "uz",
+      icons: [{ src: base + "icon-192.png", sizes: "192x192", type: "image/png" }, { src: base + "icon-512.png", sizes: "512x512", type: "image/png" }, { src: base + "icon-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" }] };
+    const l = document.querySelector('link[rel="manifest"]');
+    if (l) l.href = "data:application/manifest+json;charset=utf-8," + encodeURIComponent(JSON.stringify(m));
+    const t = document.querySelector('meta[name="apple-mobile-web-app-title"]'); if (t) t.content = name;
+    document.title = name + " · UC Savdo";
+  }
+
   // ---------- boot
   (async () => {
     const u = new URL(location.href), q = { d: u.searchParams.get("d") || "", k: u.searchParams.get("k") || "" };
@@ -1047,9 +1063,13 @@ html,body{background:var(--bg)}
     if (token) ls.set("uc.token", token);
     setAddress();
     try {
-      if (token) { st.view = "app"; await load(); if (st.view === "app" && st.data) return; }
+      if (token) {
+        st.view = "app"; await load();
+        if (st.view === "app" && st.data) { if (LINK_D) call("boot", { shop: LINK_D }).then(b => { if (b.shopName) shopManifest(b.shopName); }).catch(() => {}); return; }
+      }
       const b = await call("boot", { shop: linkShop });
       linkShopName = b.shopName || "";
+      if (linkShopName) shopManifest(linkShopName);
       if (linkShop && !linkShopName) $("loginHint").textContent = "Bu do'kon havolasi eskirgan yoki do'kon yopilgan. Admindan yangi havola so'rang.";
       if (linkShopName) { $("loginTitle").textContent = linkShopName; $("loginHint").textContent = "Do'kon hodimi sifatida kiring. Login va parolni admin beradi."; }
       st.view = b.needSetup ? "setup" : "login"; render();
