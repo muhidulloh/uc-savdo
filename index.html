@@ -263,6 +263,8 @@ html,body{background:var(--bg)}
 .chip{border-width:1.5px;padding:9px 16px;font-size:15px}
 .sheet{border-radius:28px 28px 0 0}
 @media (max-width:380px){.top h1{font-size:26px}.phead .big{font-size:27px}.phead .ico{width:54px;height:54px}.brand .word{font-size:16px;letter-spacing:2px}}
+.field input[type=date]{display:block;width:100%;min-height:48px;-webkit-appearance:none;appearance:none;text-align:left}
+.field input[type=date]::-webkit-date-and-time-value{text-align:left}
 </style>
 </head>
 <body>
@@ -364,7 +366,7 @@ html,body{background:var(--bg)}
 
   const st = {
     view: "boot", role: null, me: null, data: null,
-    tab: ls.get("uc.tab") || "home", sellerBy: "sum", topBy: "sum", day: "", sub: [], period: "today", shopFilter: ls.get("uc.shopF") || LINK_D || "all",
+    tab: ls.get("uc.tab") || "home", sellerBy: "sum", topBy: "sum", day: "", sub: [], period: "today", from: "", to: "", shopFilter: ls.get("uc.shopF") || LINK_D || "all",
     catFilter: "all", catQ: "", sellQ: "", txQ: "",
     selShop: ls.get("uc.shop"), selStaff: "admin", selPay: ls.get("uc.pay"), pending: 0, saving: false,
   };
@@ -379,11 +381,17 @@ html,body{background:var(--bg)}
   const startOfDay = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime(); };
   const startOfMonth = () => { const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 0); return d.getTime(); };
   const dayStartOf = key => { const [y, m, d] = key.split("-").map(Number); return new Date(y, m - 1, d).getTime(); };
-  const periodFrom = () => st.period === "today" ? startOfDay() : st.period === "yday" ? startOfDay() - 864e5 : st.period === "week" ? startOfDay() - 6 * 864e5 : st.period === "month" ? startOfMonth() : st.period === "day" ? dayStartOf(st.day) : 0;
-  const periodTo = () => st.period === "yday" ? startOfDay() : st.period === "day" ? dayStartOf(st.day) + 864e5 : Infinity;
-  const oneDay = () => ["today", "yday", "day"].includes(st.period);
+  const prevMonthStart = () => { const d = new Date(startOfMonth()); d.setMonth(d.getMonth() - 1); return d.getTime(); };
+  // "range" = any days chosen by hand: st.from .. st.to (both inclusive, yyyy-mm-dd).
+  const periodFrom = () => st.period === "today" ? startOfDay() : st.period === "yday" ? startOfDay() - 864e5 : st.period === "week" ? startOfDay() - 6 * 864e5 : st.period === "month" ? startOfMonth() : st.period === "pmonth" ? prevMonthStart() : st.period === "range" ? dayStartOf(st.from) : 0;
+  const periodTo = () => st.period === "yday" ? startOfDay() : st.period === "pmonth" ? startOfMonth() : st.period === "range" ? dayStartOf(st.to) + 864e5 : Infinity;
+  const oneDay = () => ["today", "yday"].includes(st.period) || (st.period === "range" && st.from === st.to);
   const dmy = ts => { const t = new Date(ts); return `${pad(t.getDate())}.${pad(t.getMonth() + 1)}.${t.getFullYear()}`; };
-  const periodLabel = () => ({ today: dmy(Date.now()), yday: dmy(Date.now() - 864e5), week: "Oxirgi 7 kun", month: "Shu oy", all: "Hammasi" })[st.period] || dmy(dayStartOf(st.day));
+  const periodLabel = () => {
+    if (st.period === "range") { const a = dayStartOf(st.from), b = dayStartOf(st.to);
+      return st.from === st.to ? dmy(a) : (st.from.slice(0, 4) === st.to.slice(0, 4) ? dmy(a).slice(0, 5) : dmy(a)) + " – " + dmy(b); }
+    return ({ today: dmy(Date.now()), yday: dmy(Date.now() - 864e5), week: "Oxirgi 7 kun", month: "Shu oy", pmonth: "O'tgan oy", all: "Hammasi" })[st.period] || "";
+  };
   const isAdmin = () => st.role === "admin";
   const isPartner = () => !!(st.me && st.me.partner);
   const D = () => st.data || { cfg: { payments: [], lowStock: 5 }, products: [], shops: [], staff: [], sales: [], today: [], kirim: [], stock: { left: 0, byPid: {} }, monthByStaff: {}, work: [] };
@@ -752,11 +760,20 @@ html,body{background:var(--bg)}
     });
   }
   function periodSheet() {
-    const opts = [["today", "Bugun"], ["yday", "Kecha"], ["week", "Oxirgi 7 kun"], ["month", "Shu oy"], ["all", "Hammasi"]];
+    const opts = [["today", "Bugun"], ["yday", "Kecha"], ["week", "Oxirgi 7 kun"], ["month", "Shu oy"], ["pmonth", "O'tgan oy"], ["all", "Hammasi"]];
+    const today = dayKey(new Date()), f0 = st.period === "range" ? st.from : dayKey(new Date(periodFrom() || startOfMonth())), t0 = st.period === "range" ? st.to : today;
     openSheet(`<h3>Davr</h3><div>${opts.map(([k, l]) => `<button type="button" class="act" data-per="${k}" ${st.period === k ? 'style="color:var(--blue);font-weight:800"' : ""}>${svg("cal")} ${l}</button>`).join("")}</div>
-      <div class="field"><label for="perDay">Boshqa kun</label><input id="perDay" type="date" value="${st.period === "day" ? st.day : dayKey(new Date())}" max="${dayKey(new Date())}"></div>`, sh => {
+      <div class="sub" style="margin-top:14px">Istalgan sanalar</div>
+      <div class="grid2"><div class="field"><label for="perFrom">Dan</label><input id="perFrom" type="date" value="${f0}" max="${today}"></div>
+      <div class="field"><label for="perTo">Gacha</label><input id="perTo" type="date" value="${t0}" max="${today}"></div></div>
+      <button type="button" class="btn primary" id="perGo">Ko'rsatish</button><div class="msg" id="perMsg"></div>`, sh => {
       sh.addEventListener("click", async e => { const b = e.target.closest("[data-per]"); if (!b) return; st.period = b.dataset.per; closeSheet(); render(); await load(); });
-      $("perDay").addEventListener("change", async () => { if (!$("perDay").value) return; st.period = "day"; st.day = $("perDay").value; closeSheet(); render(); await load(); });
+      $("perGo").addEventListener("click", async () => {
+        let a = $("perFrom").value, b = $("perTo").value || a;
+        if (!a) { $("perMsg").className = "msg err"; $("perMsg").textContent = "Boshlanish sanasini tanlang."; return; }
+        if (b > today) b = today; if (a > b) [a, b] = [b, a];
+        st.period = "range"; st.from = a; st.to = b; closeSheet(); render(); await load();
+      });
     });
   }
   function pickListSheet() {
